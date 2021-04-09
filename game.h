@@ -51,7 +51,7 @@ class Game
   bool player_flag_;                             // 下棋状态(己方为true，敌方为false)
   int chess_x_ = -1;                             // 棋盘矩阵坐标
   int chess_y_ = -1;
-  int depth_ = 6;  // 搜索树深度
+  int depth_ = 4;  // 搜索树深度
 };
 
 #endif // GAME_H_

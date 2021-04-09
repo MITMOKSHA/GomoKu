@@ -99,27 +99,23 @@ void Game::actionByAI()  // ai下棋
 
 void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& heap, int& flag, vector<vector<int>>& sort_heap)
 {
-  for (int i = chess_y_ - 5; i <= chess_y_ + 5; ++i)
+  for (int i = 0; i <= kGridNum; ++i)  // 扫描棋盘的第一行
     {
-      if (i >= 0 && i < kGridNum && chess_board_[chess_x_][i] == 0) {
-        heap.push(vector<int>{calculateScore(chess_x_, i), chess_x_, i});  // 向大顶堆中添加元素
+      if (chess_board_[0][i] == 0) {
+        heap.push(vector<int>{calculateScore(0, i), 0, i});  // 向大顶堆中添加元素
         ++flag;
       }
     }
-  for (auto row = chess_x_ - 5; row <= chess_x_ + 5; row++)
-    for (auto col = chess_y_ - 5; col <= chess_y_ + 5; col++)
+  for (auto row = 1; row <= kGridNum; row++)  // 遍历棋盘（除了第一行外）
+    for (auto col = 0; col <= kGridNum; col++)
       {
-        if (row >= 0 && row < kGridNum &&   // 防止越界
-              col >= 0 &&
-              col < kGridNum &&
-              chess_board_[row][col] == 0 &&
-              row != chess_x_ &&
+        if (chess_board_[row][col] == 0 &&
               calculateScore(row, col) < heap.top()[0]) {  // 若估值元素小于大顶堆元素
             heap.pop();  // 删除堆顶元素
             heap.push(vector<int>{calculateScore(row, col), row, col});  // 插入该值
           }
       }
-  for (int i = 0; i < flag; ++i)
+  for (int i = 0; i < flag; ++i)  // 由从大到小排序，提高剪枝效率
     {
       sort_heap.push_back(heap.top());
       heap.pop();
@@ -128,27 +124,24 @@ void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<
 
 void Game::minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& heap, int& flag, vector<vector<int>>& sort_heap)
 {
-  for (int i = chess_y_ - 5; i <= chess_y_ + 5; ++i)
+  // 此处可能需要用置换表优化搜索范围-----2021/4/9
+  for (int i = 0; i <= kGridNum; ++i)  // 扫描棋盘的第一行
     {
-      if (i >= 0 && i < kGridNum && chess_board_[chess_x_][i] == 0) {
-        heap.push(vector<int>{calculateScore(chess_x_, i), chess_x_, i});  // 向小顶堆中添加元素
+      if (chess_board_[0][i] == 0) {
+        heap.push(vector<int>{calculateScore(0, i), 0, i});  // 向小顶堆中添加元素
         ++flag;
       }
     }
-  for (auto row = chess_x_ - 5; row <= chess_x_ + 5; row++)
-    for (auto col = chess_y_ - 5; col <= chess_y_ + 5; col++)
+  for (auto row = 1; row <= kGridNum; row++)  // 遍历棋盘（除了第一行外）
+    for (auto col = 0; col <= kGridNum; col++)
       {
-        if (row >= 0 && row < kGridNum &&   // 防止越界
-              col >= 0 &&
-              col < kGridNum &&
-              chess_board_[row][col] == 0 &&
-              row != chess_x_ &&
+        if (chess_board_[row][col] == 0 &&
               calculateScore(row, col) > heap.top()[0]) {  // 若估值元素大于小顶堆元素
             heap.pop();  // 删除堆顶元素
             heap.push(vector<int>{calculateScore(row, col), row, col});  // 插入该值
           }
       }
-  for (int i = 0; i < flag; ++i)
+  for (int i = 0; i < flag; ++i)  // 由从小到大排序，提高剪枝效率
     {
       sort_heap.push_back(heap.top());
       heap.pop();
@@ -162,6 +155,7 @@ void Game::AlphaBeta(int dep, vector<pair<int, int>>& maxPoints)  // 极大极�
 
   int bestvalue = 0;
   if (!player_flag_) {
+      // 电脑后手
       priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
       int flag = 0;  // 标记记录最佳估值的个数
       vector<vector<int>> sort_heap;
@@ -182,7 +176,7 @@ void Game::AlphaBeta(int dep, vector<pair<int, int>>& maxPoints)  // 极大极�
         }
     }
   else {
-      // 电脑先手应添加开局库，此处未完善2020/1/17
+      // 电脑先手应添加开局库，此处未完善-----2020/1/17
       priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
       int flag = 0;  // 标记记录最佳估值的个数
       vector<vector<int>> sort_heap;
@@ -195,7 +189,7 @@ void Game::AlphaBeta(int dep, vector<pair<int, int>>& maxPoints)  // 极大极�
           if (bestvalue > alpha)                                          // 若该点的极值最小，添加该点坐标
             {
               maxPoints.clear();
-              alpha = bestvalue;  // 极小值搜索(AI执行器找最小值最有利)返回当前层最小值
+              alpha = bestvalue;  // 极大值搜索(AI执行器找最大值最有利)返回当前层最大值
               maxPoints.push_back(make_pair(row, col));
             }
           else if (bestvalue == alpha)  // 如果有多个最大的数存起来随机走子
@@ -204,7 +198,7 @@ void Game::AlphaBeta(int dep, vector<pair<int, int>>& maxPoints)  // 极大极�
     }
 }
 
-int Game::maxSearch(int dep, int x, int y, int beta)  // 当前层进行极大值搜索
+int Game::maxSearch(int dep, int x, int y, int beta)  // 当前层进行极大值搜索（传递当前层的beta）
 {
   int alpha = INT_MIN;
   int bestvalue = 0;
@@ -216,7 +210,7 @@ int Game::maxSearch(int dep, int x, int y, int beta)  // 当前层进行极大�
   int flag = 0;  // 标记记录最佳估值的个数
   vector<vector<int>> sort_heap;
   minHeap(heap, flag, sort_heap);
-  for (int i = 0; i < flag; ++i)
+  for (int i = 0; i < flag; ++i)  // 当前层点估值由小到大遍历，提高剪枝效率
     {
       int row = sort_heap[i][1];
       int col = sort_heap[i][2];
@@ -226,13 +220,13 @@ int Game::maxSearch(int dep, int x, int y, int beta)  // 当前层进行极大�
             chess_board_[row][col] = 1;                           // 虚拟玩家棋盘走子
             bestvalue = minSearch(dep - 1, x, y, alpha);  // 极小值搜索
             chess_board_[row][col] = 0;                          // 回溯
-            if (bestvalue > alpha)  // 更新alpha的值
+            if (alpha < bestvalue)  // 更新alpha的值
               {
+                if (alpha >= beta)
+                  return alpha;  // 进行剪枝
+              }
                 alpha = bestvalue;
               }
-            if (alpha >= beta)
-              return alpha;  // 进行剪枝
-          }
       }
   return alpha;  // 返回当前层的最大值
 }
@@ -249,23 +243,24 @@ int Game::minSearch(int dep, int x, int y, int alpha)  // 当前层进行极小�
   int flag = 0;  // 标记记录最佳估值的个数
   vector<vector<int>> sort_heap;
   maxHeap(heap, flag, sort_heap);
-  for (int i = 0; i < flag; ++i)
+  for (int i = 0; i < flag; ++i)  // 当前层点估值由大到小遍历，提高剪枝效率
     {
       int row = sort_heap[i][1];
       int col = sort_heap[i][2];
-        if (chess_board_[row][col] == 0)  // 对当前空坐标估值
-          {
-            chess_board_[row][col] = -1;  // 虚拟AI走子
-            bestvalue = maxSearch(dep - 1, x, y, beta);
-            chess_board_[row][col] = 0;  // 回溯
-            if (bestvalue < beta)  // 更新beta的值
-              {
-                beta = bestvalue;
-              }
-            if (alpha >= beta)  // 进行剪枝
-              return alpha;
-          }
-      }
+      if (chess_board_[row][col] == 0)  // 对当前空坐标估值
+        {
+          chess_board_[row][col] = -1;  // 虚拟AI走子
+          bestvalue = maxSearch(dep - 1, x, y, beta);
+          chess_board_[row][col] = 0;  // 回溯
+          if (beta > bestvalue)  // 更新beta的值
+            {
+              if (alpha >= beta)  // 进行剪枝
+                return beta;
+            }
+          beta = bestvalue;
+        }
+
+    }
   return beta;  // 返回当前层的最小值
 }
 
