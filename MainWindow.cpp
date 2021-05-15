@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include <vector>
-
 #include <QPainter>
 #include <QPen>
 #include <QMouseEvent>
@@ -15,7 +13,9 @@
 #include <QTimer>
 #include <QBrush>
 #include <QFont>
+#include <QLabel>
 #include <QAbstractButton>
+#include <QInputDialog>
 
 #define CHESS_ONE_SOUND ":/res/sound/chessone.wav"  // 声音文件
 #define WIN_SOUND ":/res/sound/win.wav"
@@ -27,12 +27,12 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::MainWindow)
 {
-  ui->setupUi(this);
+  ui->setupUi(this);  // 提示下棋方
   // 对容器进行初始化
   setWindowTitle("五子棋");
-  setFixedSize(1000, 1000);  // 设置窗口固定大小
-  grid_x_ = width() / 20;
-  grid_y_ = height() / 20;
+  setFixedSize(900, 900);  // 设置窗口固定大小
+  grid_x_ = height() / 20;
+  grid_y_ = width() / 20;
   start_x_ = 3 * grid_x_;
   start_y_ = 3 * grid_y_;
 
@@ -48,7 +48,9 @@ MainWindow::MainWindow(QWidget *parent)
   // 菜单栏的信号与槽
   connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);
   connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);
-  connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);
+  // TODO:可以撤销打印队伍名
+  // connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);  // 开局选择先后手
   initGame(PERSON);  // 默认为PVP开局
 }
 
@@ -82,6 +84,7 @@ void MainWindow::PVBinitGame()
 {
   game_->startGame(ROBOT);
   game_->running_status_ = PLAYING;
+  digit_ = 0;
   update();
 }
 
@@ -91,13 +94,11 @@ void MainWindow::winDialog(const QString& str)
   btnValue.setIcon(QMessageBox::Information);
   btnValue.setWindowTitle("游戏结束");
   btnValue.setText(str + "胜利!");
-  btnValue.setInformativeText("你还想再来一局吗?");
-  btnValue.setStandardButtons(QMessageBox::Ok | QMessageBox::No);  // 设置按钮
-  btnValue.setDefaultButton(QMessageBox::Ok);                                     // 设置默认按钮
+  btnValue.setStandardButtons(QMessageBox::Ok);  // 设置按钮
+  btnValue.setDefaultButton(QMessageBox::Ok);     // 设置默认按钮
   int ret = btnValue.exec();
   switch (ret) {
-    case QMessageBox::Ok: initGame(game_->battle_type_); break;
-    case QMessageBox::No: close(); break;
+    case QMessageBox::Ok: btnValue.close(); break;
     default: close();  // 默认关闭
     }
 }
@@ -108,13 +109,11 @@ void MainWindow::deadDialog()
   btnValue.setIcon(QMessageBox::Information);
   btnValue.setWindowTitle("游戏结束");
   btnValue.setText("平局!");
-  btnValue.setInformativeText("你还想再来一局吗?");
-  btnValue.setStandardButtons(QMessageBox::Ok | QMessageBox::No);  // 设置按钮
+  btnValue.setStandardButtons(QMessageBox::Ok);  // 设置按钮
   btnValue.setDefaultButton(QMessageBox::Ok);                                     // 设置默认按钮
   int ret = btnValue.exec();
   switch (ret) {
-    case QMessageBox::Ok: initGame(game_->battle_type_); break;
-    case QMessageBox::No: close(); break;
+    case QMessageBox::Ok: btnValue.close(); break;
     default: close();  // 默认关闭
     }
 }
@@ -124,19 +123,270 @@ void MainWindow::initiativeDialog()  // 先手对话框
   QMessageBox btnValue;
   btnValue.setIcon(QMessageBox::Question);
   btnValue.setWindowTitle("选择");
-  btnValue.setText("由谁先手");
+  btnValue.setText("是否由计算机开局");
   btnValue.setStandardButtons(QMessageBox::Ok | QMessageBox::No);
-  btnValue.setButtonText(QMessageBox::Ok, QString("玩家先手")); // 设置按钮文本为中文
-  btnValue.setButtonText(QMessageBox::No, QString("电脑先手"));
+  btnValue.setButtonText(QMessageBox::No, QString("否")); // 设置按钮文本为中文
+  btnValue.setButtonText(QMessageBox::Ok, QString("是"));
   int ret = btnValue.exec();
   switch (ret) {
-    case QMessageBox::Ok: initGame(game_->battle_type_);  // 初始化棋盘
+    case QMessageBox::No: {
+        ui->label_black->setText("黑方用户:" + text);
+        ui->label_white->setText("白方用户:计算机");
+        initGame(game_->battle_type_); // 初始化棋盘
+        pointDialog();  // 用户进行打点
+      }
       break;
-    case QMessageBox::No: game_->actionByAI();  // 电脑走子
+    case QMessageBox::Ok: {
+        ui->label_black->setText("黑方用户:计算机");
+        ui->label_white->setText("白方用户:" + text);
+        // TODO:只选择了一种默认开局（疏星局1-7平衡）,需添加各种开局库
+        game_->chess_board_[7][7] = 1;
+        game_->number[7][7] = ++game_->num;
+        game_->chess_board_[7][6] = -1;
+        game_->number[7][6] = ++game_->num;
+        game_->chess_board_[9][5] = 1;
+        game_->number[9][5] = ++game_->num;
+        game_->player_flag_ = !game_->player_flag_;
+        // TODO提示电脑针对开局库选择的打点个数
+        game_->pointNum = 3;  // 针对疏星局选择的打点个数为3
+        startPointAI();  // 提示AI打点个数的对话框
+        exchangeDialogPC();  // 玩家选择是否交换的对话框
+      }
       break;
-    default: close();  // 默认关闭
+    default: close();  // 默认
     }
 
+}
+
+void MainWindow::printTeamNameDialog()
+{
+  bool ok;
+  text = QInputDialog::getText(this, tr("输入"),
+                                       tr("请输入用户名:"), QLineEdit::Normal,
+                                       nullptr, &ok);
+  if (ok && !text.isEmpty()) {
+      ui->label_black->setText("黑方用户:" + text);
+      ui->label_white->setText("白方用户:计算机");
+    }
+}
+
+void MainWindow::pointDialog()
+{
+  bool ok;
+  int i = QInputDialog::getInt(this, tr("输入"),
+                               tr("请输入打点数:"), 0, 0, 50, 1, &ok);
+  if (ok) {
+      game_->pointNum = i;  // 传递打点数
+    }
+}
+
+void MainWindow::startPointPC()
+{
+  QMessageBox btnValue;
+  btnValue.setIcon(QMessageBox::Information);
+  btnValue.setWindowTitle("打点开始提示");
+  btnValue.setText("开始打点！");
+  btnValue.setStandardButtons(QMessageBox::Ok);
+  btnValue.setButtonText(QMessageBox::Ok, QString("确定")); // 设置按钮文本为中文
+  int ret = btnValue.exec();
+  switch (ret) {
+    case QMessageBox::Ok: btnValue.close();
+      break;
+    default: close();  // 默认
+    }
+}
+
+void MainWindow::startPointAI()
+{
+  QMessageBox btnValue;
+  btnValue.setIcon(QMessageBox::Information);
+  btnValue.setWindowTitle("打点提示");
+  // TODO;根据不同的开局给出不同的打点数
+  btnValue.setText("计算机给出了打点数:" + QString::number(game_->pointNum));
+  btnValue.setStandardButtons(QMessageBox::Ok);
+  btnValue.setButtonText(QMessageBox::Ok, QString("确定")); // 设置按钮文本为中文
+  int ret = btnValue.exec();
+  switch (ret) {
+    case QMessageBox::Ok: btnValue.close();
+      break;
+    default: close();  // 默认
+    }
+}
+
+void MainWindow::endPointPC()
+{
+  QMessageBox btnValue;
+  btnValue.setIcon(QMessageBox::Information);
+  btnValue.setWindowTitle("打点结束提示");
+  btnValue.setText("打点结束，下面由白方进行选择！");
+  btnValue.setStandardButtons(QMessageBox::Ok);
+  btnValue.setButtonText(QMessageBox::Ok, QString("确定"));
+  int ret = btnValue.exec();
+  switch (ret) {
+    case QMessageBox::Ok: {
+        btnValue.close();
+        // 白棋方选择对白棋方有利的打点位置（即对黑棋不利的点，小的值），并帮黑棋下上
+        int bestvalue = INT_MAX;
+        pair<int, int> bestPoint;  // 记录该子
+        for (auto i : record_) {
+            game_->chess_board_[i.first][i.second] = 0;  // 清除绘制的打点子
+          }
+        for (auto i : record_) {
+            game_->chess_board_[i.first][i.second] = 1;  // 虚拟走子估该点的值
+            int cal = game_->calculateScore();
+            if (cal < bestvalue) {  // 找到最小的值
+                bestvalue = cal;
+                bestPoint.first = i.first;
+                bestPoint.second = i.second;
+              }
+            game_->chess_board_[i.first][i.second] = 0;  // 回溯
+          }
+        // 白子帮黑子执行，打点结束由AI进行选择
+        game_->chess_board_[bestPoint.first][bestPoint.second] = 1;
+        game_->player_flag_ = !game_->player_flag_;  // 交换执行权
+        game_->number[bestPoint.first][bestPoint.second] = ++game_->num;
+        record_.clear();
+        vector<pair<int, int>>().swap(record_);
+      }
+      break;
+    default: close();  // 默认
+    }
+}
+
+void MainWindow::endPointAI()
+{
+  QMessageBox btnValue;
+  btnValue.setIcon(QMessageBox::Information);
+  btnValue.setWindowTitle("打点结束提示");
+  btnValue.setText("打点结束，下面由白方进行选择！");
+  btnValue.setStandardButtons(QMessageBox::Ok);
+  btnValue.setButtonText(QMessageBox::Ok, QString("确定"));
+  int ret = btnValue.exec();
+  switch (ret) {
+    case QMessageBox::Ok: {
+          // 打点结束由玩家进行选择
+        btnValue.close();
+      }
+      break;
+    default: close();  // 默认
+    }
+}
+
+bool MainWindow::exchange()  // 根据开局库判断是否需要交换
+{
+  if (game_->pointNum >= 7) {  // 打点数大于等于7选择不交换
+      return false;
+    }
+  if (game_->chess_board_[7][7] == 1 && game_->chess_board_[7][6] == -1) {  // 直指开局
+      if (game_->chess_board_[7][5] == 1 && game_->pointNum <= 3 )  // 寒星局
+        return true;
+      else if (game_->chess_board_[8][5] == 1 && game_->pointNum <= 5)  // 溪月局
+        return true;
+      else if (game_->chess_board_[9][5] == 1)  // 疏星局
+        return false;
+      else if (game_->chess_board_[8][6] == 1 && game_->pointNum <= 5)  // 花月局
+        return true;
+      else if (game_->chess_board_[9][6] == 1 && game_->pointNum <= 5)  // 残月局
+        return true;
+      else if (game_->chess_board_[8][7] == 1 && game_->pointNum <= 3)  // 雨月局
+        return true;
+      else if (game_->chess_board_[9][7] == 1 && game_->pointNum <= 4)  // 金星局
+        return true;
+      else if (game_->chess_board_[7][8] == 1 && game_->pointNum <= 3)  // 松月局
+        return true;
+      else if (game_->chess_board_[8][8] == 1 && game_->pointNum <= 1)  // 丘月局
+        return true;
+      else if (game_->chess_board_[9][8] == 1 && game_->pointNum <= 2)  // 新月局
+        return true;
+      else if (game_->chess_board_[7][9] == 1 && game_->pointNum <= 1)  // 瑞星局
+        return true;
+      else if (game_->chess_board_[8][9] == 1 && game_->pointNum <= 2)  // 山月局
+        return true;
+      else if (game_->chess_board_[9][9] == 1) // 游星局
+          return false;
+    } else if (game_->chess_board_[7][7] == 1 && game_->chess_board_[8][6] == -1) {  // 斜指开局
+      if (game_->chess_board_[9][5] == 1)  // 长星局
+        return false;
+      else if (game_->chess_board_[9][6] == 1 && game_->pointNum <= 5)  // 峡月局
+        return true;
+      else if (game_->chess_board_[9][7] == 1 && game_->pointNum <= 3)  // 恒星局
+        return true;
+      else if (game_->chess_board_[9][8] == 1 && game_->pointNum <= 5)  // 水月局
+        return true;
+      else if (game_->chess_board_[9][9] == 1)  // 流星局
+        return false;
+      else if (game_->chess_board_[8][7] == 1 && game_->pointNum <= 3)  // 云月局
+        return true;
+      else if (game_->chess_board_[8][8] == 1 && game_->pointNum <= 6)  // 蒲月局
+        return true;
+      else if (game_->chess_board_[8][9] == 1 && game_->pointNum <= 2)  // 岚月局
+        return true;
+      else if (game_->chess_board_[7][8] == 1 && game_->pointNum <= 3)  // 银月局
+        return true;
+      else if (game_->chess_board_[7][9] == 1 && game_->pointNum <= 3)  // 明星局
+        return true;
+      else if (game_->chess_board_[6][8] == 1 && game_->pointNum <= 1)  // 斜月局
+        return true;
+      else if (game_->chess_board_[6][9] == 1 && game_->pointNum <= 2)  // 名月局
+        return true;
+      else if (game_->chess_board_[5][9] == 1)
+          return false;
+    }
+  return false;
+}
+
+void MainWindow::exchangeDialogPC()
+{
+  QMessageBox btnValue;
+  btnValue.setIcon(QMessageBox::Information);
+  btnValue.setWindowTitle("三手可交换");
+  btnValue.setText("是否交换执棋？");
+  btnValue.setStandardButtons(QMessageBox::Ok | QMessageBox::No);
+  btnValue.setButtonText(QMessageBox::No, QString("否")); // 设置按钮文本为中文
+  btnValue.setButtonText(QMessageBox::Ok, QString("是"));
+  int ret = btnValue.exec();
+  switch (ret) {
+    case QMessageBox::Ok: {  // 交换执行棋
+        game_->actionByAI();
+        startPointPC();
+        pointing_ = true;  // 正在打点
+        ui->label_black->setText("黑方用户:" + text);
+        ui->label_white->setText("白方用户:计算机");
+      }
+      break;
+    case QMessageBox::No: {  // 不交换则关闭对话框
+        btnValue.close();
+      }
+      break;
+    default: close();
+    }
+}
+
+void MainWindow::exchangeDialogAI()
+{
+  QMessageBox btnValue;
+  btnValue.setIcon(QMessageBox::Information);
+  btnValue.setWindowTitle("三手可交换");
+  QString str;
+  if (exchange()) {  // 可交换
+      str = "交换！";
+      game_->run_procedure_ = DONE;  // 等同于先让玩家走子
+      ui->label_black->setText("黑方用户:计算机");
+      ui->label_white->setText("白方用户:" + text);
+    } else {  // 不可交换
+      str = "不交换！";
+    }
+  btnValue.setText("计算机选择了" + str);
+  btnValue.setStandardButtons(QMessageBox::Ok);
+  btnValue.setButtonText(QMessageBox::Ok, QString("是"));
+  int ret = btnValue.exec();
+  switch (ret) {
+    case QMessageBox::Ok: {
+        btnValue.close();
+      }
+      break;
+    default: break;
+    }
 }
 
 void MainWindow::paintEvent(QPaintEvent*)
@@ -149,6 +399,7 @@ void MainWindow::paintEvent(QPaintEvent*)
   painter.setPen(pen);
   QBrush brush;
   painter.drawPixmap(0, 0, 1000, 1000, QPixmap("../棋盘背景.png"));
+
   // 绘制棋盘
   for (int i = 0; i < kGridNum; ++i)
     {
@@ -156,8 +407,18 @@ void MainWindow::paintEvent(QPaintEvent*)
       painter.drawLine(start_x_ + grid_x_ * i, start_y_, start_x_ + grid_x_ * i, start_y_ + kLineNum * grid_y_);  // 竖线
     }
 
+  // 绘制天元点以及5X5线
+  for (int i = 3; i < kGridNum; i += 4) {
+      for (int j = 3; j < kGridNum; j += 4) {
+          brush.setColor(Qt::black);
+          brush.setStyle(Qt::SolidPattern);
+          painter.setBrush(brush);
+          painter.drawEllipse(QPointF(start_x_ + grid_x_ * i, start_y_ + grid_y_ * j), 6, 6);
+        }
+    }
+
   // 绘制字符
-  QFont font ("Helvetica", 17, 80, false);
+  QFont font ("Microsoft YaHei", 17, 80, false);
   font.setCapitalization(QFont::QFont::AllUppercase);  // 设置为大写
   font.setLetterSpacing(QFont::AbsoluteSpacing, grid_x_ - font.pointSize() - pen.width() / 2);  // 设置字符间的间距
   painter.setFont(font);         // 使用字体
@@ -171,9 +432,8 @@ void MainWindow::paintEvent(QPaintEvent*)
       painter.drawText(start_x_ - grid_x_ - font.pointSize() / 2 - 5, start_y_ + font.pointSize() / 2 + (15 - i) * grid_y_, QString::number(i));  // QString::number()将数字转化为字符串
     }
 
-  QFont font1("Helvetica", 17, 100, false);
-  QFont font2("Helvetica", 17, 100, false);
-  // 绘制棋
+   // 绘制棋
+  QFont chessFont("Microsoft YaHei", 17, 100, false);
   for (int i = 0; i < kGridNum; ++i)
     for (int j = 0; j < kGridNum; ++j)
       {
@@ -183,25 +443,45 @@ void MainWindow::paintEvent(QPaintEvent*)
             brush.setStyle(Qt::SolidPattern);                                                            // 一定要设置填充风格
             painter.setBrush(brush);                                                                        // 将画笔交给画家
             painter.drawEllipse(QPointF(start_x_+ i * grid_x_, start_y_ + j * grid_y_)  // 圆心(浮点精度)
-                                , grid_x_ * (5.0 / 12.0), grid_y_ * (5.0 / 12.0));  // 半径
-            painter.setFont(font1);
-            painter.setPen(Qt::red);
-            painter.drawText(start_x_ + i * grid_x_ - font.pointSize() / 2, start_y_ + j * grid_y_ + font.pointSize() / 2, QString::number(game_->digit_));
-          }
-        else if (game_->chess_board_[i][j] == -1)
-          {
+                             , grid_x_ * (5.0 / 12.0), grid_y_ * (5.0 / 12.0));  // 半径
+            // 棋上的数字
+            painter.setFont(chessFont);         // 使用字体
+            painter.setPen(Qt::red);  // 设置画笔颜色
+            painter.drawText(start_x_+ i * grid_x_ - grid_x_ * (3.5 / 12.0), start_y_ + j * grid_y_ + grid_y_ * (3.0 / 12.0)
+                             , QString::number(game_->number[i][j]));
+            painter.setPen(Qt::black);  // 设置画笔颜色
+
+          } else if (game_->chess_board_[i][j] == -1) {
             brush.setColor(Qt::white);                                                                       // 设置画刷颜色
             brush.setStyle(Qt::SolidPattern);                                                             // 填充风格
             painter.setBrush(brush);                                                                        // 将画笔交给画家
+            painter.drawEllipse(QPointF(start_x_+ i * grid_x_ , start_y_ + j * grid_y_)  // 圆心(浮点精度)
+                                , grid_x_ * (5.0 / 12.0), grid_y_ * (5.0 / 12.0));  // 半径
+            // 棋上的数字
+            painter.setFont(chessFont);         // 使用字体
+            painter.setPen(Qt::red);  // 设置画笔颜色
+            painter.drawText(start_x_+ i * grid_x_ - grid_x_ * (3.5 / 12.0), start_y_ + j * grid_y_ + grid_y_ * (3.0 / 12.0)
+                             , QString::number(game_->number[i][j]));
+            painter.setPen(Qt::black);  // 设置画笔颜色
+
+          } else if (game_->chess_board_[i][j] == -2) {  // 绘制打点子
+            brush.setColor(Qt::black);                                                                      // 设置画刷颜色
+            brush.setStyle(Qt::SolidPattern);                                                            // 一定要设置填充风格
+            painter.setBrush(brush);                                                                        // 将画笔交给画家
             painter.drawEllipse(QPointF(start_x_+ i * grid_x_, start_y_ + j * grid_y_)  // 圆心(浮点精度)
                                 , grid_x_ * (5.0 / 12.0), grid_y_ * (5.0 / 12.0));  // 半径
-            painter.setFont(font2);
-            // 打印棋子的计数
-            painter.setPen(Qt::red);
-            painter.drawText(start_x_ + i * grid_x_ - font.pointSize() / 2, start_y_ + j * grid_y_ + font.pointSize() / 2, QString::number(game_->digit_));
+            brush.setColor(Qt::red);                                                                      // 设置画刷颜色
+            brush.setStyle(Qt::SolidPattern);                                                            // 一定要设置填充风格
+            painter.setBrush(brush);                                                                        // 将画笔交给画家
+            // 绘制矩形
+            painter.drawRect(start_x_+ i * grid_x_ - grid_x_ * (3 / 12.0), start_y_ + j * grid_y_- grid_y_ * (1 / 12.0), 25, 10);
           }
       }
-
+  // 提示执行棋文本
+  QFont promptFont("Microsoft YaHei", 15, 50, false);
+  ui->label->setFont(promptFont);
+  ui->label->setText(game_->prompt_text_);
+  // 判断胜负
   if (game_->chess_x_ >= 0 && game_->chess_x_ < kGridNum &&
       game_->chess_y_ >= 0 && game_->chess_y_ < kGridNum &&
       (game_->chess_board_[game_->chess_x_][game_->chess_y_] == 1 ||
@@ -246,32 +526,82 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
       game_->chess_y_ = (y - (start_y_ - grid_y_ / 2)) / grid_y_;
       update();
     }
-  // 人下棋，并且不能抢机器的棋
-  if  (game_->run_procedure_ == DONE) {
-      chessOneByPerson();
-    }
-  // 如果是人机模式，需要调用AI下棋
-  if (game_->battle_type_ == ROBOT  && game_->run_procedure_ == CHESSING
-      && !game_->isDeadGame() &&  // 解决棋走完还下的问题
-      !game_->isWin(game_->chess_x_, game_->chess_y_))
-    {
-      // 用定时器做一个延迟
-      QTimer::singleShot(kAIDelay, this,
-                         [this]() {
-          game_->actionByAI();  // AI走子
-          QSound::play(CHESS_ONE_SOUND);
-          update();  // 更新棋盘
-        });
-    }
+    // 人下棋，并且不能抢机器的棋
+    if  (game_->run_procedure_ == DONE) {  // 且没有在打点
+          chessOneByPerson();
+          if (game_->number[game_->chess_x_][game_->chess_y_] == 3) {  // AI选择是否交换的对话框
+              exchangeDialogAI();
+            }
+          if (game_->battle_type_ == ROBOT && game_->number[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点 TODO:点击第四个子会出现bug
+              startPointPC();  // 提示开始打点（机器自动打点）
+              // 打出当前（黑子）前几个最优势的棋，然后用户（白棋）选择电脑（黑棋）下哪一步
+              int flag = 0;
+              priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+              game_->minHeap(heap, flag, game_->pointNum);
+              for (int i = 0; i < game_->pointNum; ++i) {
+                  int row = game_->sort_heap[i][1];
+                  int col = game_->sort_heap[i][2];
+                  game_->chess_board_[row][col] = -2;
+                }
+              game_->run_procedure_ = DONE;  // 玩家执行棋
+              pointing_ai_ = true;
+              endPointAI();  // 打点结束提示
+            }
+      }
+    // 如果是人机模式，需要调用AI下棋
+    if (game_->battle_type_ == ROBOT  && game_->run_procedure_ == CHESSING
+        && !game_->isDeadGame() &&  // 解决棋走完还下的问题
+        !game_->isWin(game_->chess_x_, game_->chess_y_) &&
+        game_->number[game_->chess_x_][game_->chess_y_] >= 3 &&  // 指定开局黑方走三步
+        !pointing_)  // 打点时AI不走子
+      {
+        // 用定时器做一个延迟
+        QTimer::singleShot(kAIDelay, this,
+                           [this]() {
+              game_->actionByAI();  // AI走子
+              QSound::play(CHESS_ONE_SOUND);
+              update();  // 更新棋盘
+              if (game_->number[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点
+                  startPointPC();
+                  pointing_ = true;  // 正在打点
+                }
+          });
+      }
   game_->run_procedure_ = DONE;
 }
 
 void MainWindow::chessOneByPerson()
 {
-  if (game_->chess_x_ != -1 && game_->chess_y_ != -1 && game_->chess_board_[game_->chess_x_][game_->chess_y_] == 0)  // 落子一定要放在鼠标事件中
+  if (game_->chess_x_ != -1 && game_->chess_y_ != -1 &&
+      (game_->chess_board_[game_->chess_x_][game_->chess_y_] == 0 ||
+       game_->chess_board_[game_->chess_x_][game_->chess_y_] == -2))  // 保证在AI打点时，玩家能选择打点子
     {
-      game_->updateMap(game_->chess_x_, game_->chess_y_);
-      QSound::play(CHESS_ONE_SOUND);  // 发出下棋的声音
-      game_->run_procedure_ = CHESSING;
+       // 落子一定要放在鼠标事件中
+      if (!pointing_) {
+        game_->updateMap(game_->chess_x_, game_->chess_y_);
+        game_->run_procedure_ = CHESSING;
+        QSound::play(CHESS_ONE_SOUND);  // 发出下棋的声音
+        if (pointing_ai_) {  // 对所AI绘制的打点子进行清空
+            for (int i = 0; i < game_->pointNum; ++i) {
+                int row = game_->sort_heap[i][1];
+                int col = game_->sort_heap[i][2];
+                if (row == game_->chess_x_ && col == game_->chess_y_) {  // 选择下的棋就不必回溯
+                    continue;
+                  }
+                game_->chess_board_[row][col] = 0;  // 回溯
+              }
+            pointing_ai_ = false;
+            game_->run_procedure_ = DONE;
+          }
+      } else {  // 打点
+        game_->updatePoint(game_->chess_x_, game_->chess_y_);
+        // 不改变run_procedure
+        record_.push_back(make_pair(game_->chess_x_, game_->chess_y_));  // 将所打的点存入record_中
+        if (++digit_ >= game_->pointNum) {  // 选择足够的打点数
+            pointing_ = !pointing_;  // 结束打点
+            endPointPC();
+            game_->actionByAI();  // 轮到电脑走子
+          }
+     }
     }
 }

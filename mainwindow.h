@@ -2,8 +2,8 @@
 #define MAINWINDOW_H_
 
 #include "game.h"
-#include <vector>
 #include <QMainWindow>
+#include <QString>
 
 
 QT_BEGIN_NAMESPACE
@@ -33,12 +33,27 @@ class MainWindow : public QMainWindow
   void winDialog(const QString&);  // 胜利对话框
   void deadDialog();                       // 平局对话框
   void initiativeDialog();                // 先行棋对话框
+  void pointDialog();                      // 打点数对话框
+  void printTeamNameDialog();    // 打印队伍名对话框
+  void startPointPC();                         // 开始打点提示对话框（玩家先手）
+  void startPointAI();                          // 开始打点提示对话框（AI先手）
+  void endPointPC();                           // 打点结束提示对话框（玩家先手）
+  void endPointAI();                        // 打点结束提示对话框（AI先手）
+  bool exchange();                         // 针对开局库决定是否换手
+  void exchangeDialogPC();              // 玩家决定是否换手对话框
+  void exchangeDialogAI();             //  AI提示是否换手对话框
+
  private:
   Ui::MainWindow *ui;
-  Game* game_; // 聚合类(game根据棋盘实现)
-  int grid_x_;      // 棋盘格长宽
+  Game* game_;               // 聚合类(game根据棋盘实现)
+  int grid_x_;                    // 棋盘格长宽
   int grid_y_;
-  int start_x_; // 起始点坐标
+  int start_x_;                    // 起始点坐标
   int start_y_;
+  int digit_ = 0;  // 计数
+  QString text;  // 输入的用户名称
+  bool pointing_= false;  // 用户是否正在打点
+  bool pointing_ai_ = false;  // AI是否正在打点
+  vector<pair<int, int>> record_;  // 记录打点子的坐标
 };
 #endif // MIANWINDOW_H_
