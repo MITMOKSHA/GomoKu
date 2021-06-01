@@ -56,7 +56,7 @@ public:
   void judgeChessTypeEva(vector<vector<int>>&, vector<int>&);                                                                                                  // 判断棋局估值
   void seekKillBlack(vector<pair<int, int>>&, int);       // 寻找黑杀棋
   void seekKillWhite(vector<pair<int, int>>&, int);       // 寻找白杀棋
-  bool analyse_kill(int dep, vector<pair<int, int>>&);     // 算杀
+  bool analyse_kill(int dep, pair<int, int>&);     // 算杀
   bool judgeProhibit(vector<vector<int>>&);  // TODO判断禁手
   void openLib();                                               // TODO开局库
   void updatePoint(int x, int y);                       // 更新打点棋TODO
@@ -73,7 +73,7 @@ private:
   vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
   int chess_y_ = -1;
-  int depth_ = 4;                                 // 搜索树深度
+  int depth_ = 2;                                 // 搜索树深度
   int kill_depth_ = 8;                          // 算杀时搜索树的深度
   Result result_;                                 // 判断是否存在必胜棋
   Prohibit prohibit_;                            // 判断禁手

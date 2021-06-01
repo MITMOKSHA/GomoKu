@@ -163,22 +163,22 @@ void Game::seekKillWhite(vector<pair<int, int> >& pointsList, int flag)
 }
 
 // TODO总结一下，算杀首先由当前层贪心找到活三或者冲四才能进行深度搜索，深度搜索的目的是为了判断黑棋是否能胜利
-bool Game::analyse_kill(int dep, vector<pair<int, int>>& maxPoints)  // 寻找杀棋TODO  目前为贪心0层
+bool Game::analyse_kill(int dep, pair<int, int>& maxPoints)  // 寻找杀棋TODO  目前为贪心0层
 {
   if (dep == 0 || isDeadGame() || (dep != 8 && result_ != Result::R_DRAW))  // 递归终止的条件TODO，当前层出现必胜棋子
     {
       if (dep == 0) {  // 走一步对黑棋最好的位置，若黑棋还没赢则返回false
-//          priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
-//          int flag = 0;  // 标记记录最佳估值的个数
-//          minHeap(heap, flag, 1);
-//          int row = sort_heap[flag-1][1];
-//          int col = sort_heap[flag-1][2];
-//          chess_board_[row][col] = 1;
-//          calculateScore();
-//          chess_board_[row][col] = 0;
-//          if (result_ == Result::R_BLACK)
-//            return true;
-//          else
+          priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+          int flag = 0;  // 标记记录最佳估值的个数
+          minHeap(heap, flag, 1);
+          int row = sort_heap[flag-1][1];
+          int col = sort_heap[flag-1][2];
+          chess_board_[row][col] = 1;
+          calculateScore();
+          chess_board_[row][col] = 0;
+          if (result_ == Result::R_BLACK)
+            return true;
+          else
             return false;
         } else if (result_ == Result::R_BLACK) {  // 找到黑棋杀棋
           return true;
@@ -207,7 +207,6 @@ bool Game::analyse_kill(int dep, vector<pair<int, int>>& maxPoints)  // 寻找�
           if (bestvalue)  // 如果能必胜
             {
               if (dep == kill_depth_) {  // 仅限第一层的情况
-                      maxPoints.push_back(make_pair(row, col));
                     }
                 }
               return true;
@@ -444,6 +443,8 @@ void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<
               }
           }
       }
+  marked.clear();
+  vector<vector<bool>>().swap(marked);
   sort_heap.clear();
   vector<vector<int>>().swap(sort_heap);  // 清空sort_heap的内存
   for (int i = 0; i < flag; ++i)  // 此时顺序为从大到小
