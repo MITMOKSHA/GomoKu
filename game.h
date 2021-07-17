@@ -55,16 +55,15 @@ class Game
   int AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints);                                                                                           // αβ剪枝
   int threadAlphaBeta(int dep, int threadIndex, vector<pair<int, int>>& maxPoints, int alpha, int beta);                                                   // 多线程AlphaBeta剪枝
   void threadDistribute();                                                                                                                                                             // 线程分配
-  void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int);       // 大根堆
-  void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int);  // 小根堆
+  void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, vector<vector<int>>&);       // 大根堆
+  void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, vector<vector<int>>&);  // 小根堆
   void threadMaxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, int);       // 大顶堆
   void threadMinHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, int);  // 小顶堆
   void judgeChessTypeEva(vector<vector<int>>&, vector<int>&);                                                                                                  // 判断棋局估值
-  void seekKillBlack(vector<pair<int, int>>&, int);       // 寻找黑杀棋
-  void seekKillWhite(vector<pair<int, int>>&, int);       // 寻找白杀棋
+  void seekKillBlack(vector<pair<int, int>>&, int, vector<vector<int>>&);       // 寻找黑杀棋
+  void seekKillWhite(vector<pair<int, int>>&, int, vector<vector<int>>&);       // 寻找白杀棋
   bool analyse_kill(int dep, pair<int, int>&);     // 算杀
   bool judgeProhibit(vector<vector<int>>&);  // TODO判断禁手
-  void openLib();                                               // TODO开局库
   void updatePoint(int x, int y);                       // 更新打点棋
 
  private:
@@ -73,10 +72,10 @@ class Game
   RuningStatus run_procedure_;           // 下棋状态
   vector<vector<int>> chess_board_;  // 0表示位置空，1表示黑棋，-1表示白棋
   vector<vector<vector<int>>> thread_chess_board_;  // 线程版的棋盘
-  vector<vector<int>> number;          // 给棋子计数
-  vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
+  vector<vector<int>> number_;          // 给棋子计数
   vector<vector<vector<int>>> thread_sort_heap;
-  int num = 0;                                     // 计数数字
+  vector<pair<int, int>> trace_;             // 跟踪已经下了的棋（方便进行悔棋）
+  int num_ = 0;                                     // 计数数字
   bool player_flag_;                             // 下棋状态(己方为true，敌方为false)
   vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
@@ -90,7 +89,7 @@ class Game
   mutex m_mutex_;                         // 自旋锁
   int thread_num_ = 5;                     // 线程数
   int multi_ = 2;                               // 博弈树宽度 = multi * thread_num_
-  bool color_;                                     // 判断哪边是电脑, 黑方是电脑为true, 白方是电脑为false
+  bool color_;                                     // 判断哪边是电脑, 黑方是AI为true, 白方是AI为false
   bool first_step_ = true;                          // 标记第一层，方便记录将要下的节点位置
 };
 

@@ -117,11 +117,12 @@ void Game::updateMap (int x, int y)
       chess_board_[x][y] = -1;
       prompt_text_ = "黑方正在行棋...";
     }
-  number[x][y] = ++num;
-  player_flag_ = !player_flag_;  // 交换棋权
+  number_[x][y] = ++num_;
+  trace_.push_back(make_pair(x, y));           // 将走子的坐标放入容器中
+  player_flag_ = !player_flag_;                    // 交换棋权
 }
 
-void Game::seekKillBlack(vector<pair<int, int>>& pointsList, int flag)  // 找到黑棋的连五，活四，冲四，活三的杀棋位置 TODO
+void Game::seekKillBlack(vector<pair<int, int>>& pointsList, int flag, vector<vector<int>>& sort_heap)  // 找到黑棋的连五，活四，冲四，活三的杀棋位置 TODO
 {
   for (int i = flag - 1; i >= 0; --i) {
       int row = sort_heap[i][1];
@@ -139,7 +140,7 @@ void Game::seekKillBlack(vector<pair<int, int>>& pointsList, int flag)  // 找�
     }
 }
 
-void Game::seekKillWhite(vector<pair<int, int> >& pointsList, int flag)
+void Game::seekKillWhite(vector<pair<int, int> >& pointsList, int flag, vector<vector<int>>& sort_heap)
 {
   for (int i = flag - 1; i >= 0; --i) {
       int row = sort_heap[i][1];
@@ -190,10 +191,11 @@ bool Game::analyse_kill(int dep, pair<int, int>& maxPoints)  // 寻找杀棋TODO
         }
         vector<pair<int, int>> pointsList;  // 存储杀棋点
         priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+        vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        minHeap(heap, flag, 10);
+        minHeap(heap, flag, 10, sort_heap);
         // 电脑有活三和冲四的时候玩家是必须防守的
-        seekKillBlack(pointsList, flag);  // 搜索黑方的杀棋
+        seekKillBlack(pointsList, flag, sort_heap);  // 搜索黑方的杀棋
         if (pointsList.empty()) {  // 判断是否有活三和冲四
             return false;
         }
@@ -232,9 +234,10 @@ bool Game::analyse_kill(int dep, pair<int, int>& maxPoints)  // 寻找杀棋TODO
         }
         vector<pair<int, int>> pointsList;  // 存储杀棋点
         priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
+        vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        maxHeap(heap, flag, 10);
-        seekKillWhite(pointsList, flag);  // 搜索白活三冲四
+        maxHeap(heap, flag, 10, sort_heap);
+        seekKillWhite(pointsList, flag, sort_heap);  // 搜索白活三冲四
         if (pointsList.empty()) {
             return true;  // 未守住
         }
@@ -357,10 +360,11 @@ void Game::actionByAI()  // ai下棋
   chess_x_ = maxPoints.first; // 记录落子点
   chess_y_ = maxPoints.second;
   qDebug() << counts;
+  counts = 0;
   updateMap(chess_x_, chess_y_);  // 在棋盘上记录落子值
 }
 
-void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& heap, int& flag, int max_flag)
+void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& heap, int& flag, int max_flag, vector<vector<int>>& sort_heap)
 {
   // 防止对同一个位置重复估值，只针对本次，结束时销毁
   vector<vector<bool>> marked(kGridNum, vector<bool>(kGridNum, false));  // 添加标记（初始化都为未标记）
@@ -461,8 +465,6 @@ void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<
       }
   marked.clear();
   vector<vector<bool>>().swap(marked);
-  sort_heap.clear();
-  vector<vector<int>>().swap(sort_heap);  // 清空sort_heap的内存
   for (int i = 0; i < flag; ++i)  // 此时顺序为从大到小
     {
       sort_heap.push_back(heap.top());  // 放入数组中
@@ -470,7 +472,7 @@ void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<
     }
 }
 
-void Game::minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& heap, int& flag, int max_flag)
+void Game::minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& heap, int& flag, int max_flag, vector<vector<int>>& sort_heap)
 {
   // 防止对同一个位置重复估值，只针对本次，结束时销毁
   vector<vector<bool>> marked(kGridNum, vector<bool>(kGridNum, false));  // 添加标记（初始化都为未标记）
@@ -571,8 +573,6 @@ void Game::minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vect
       }
   marked.clear();
   vector<vector<bool>>().swap(marked);
-  sort_heap.clear();
-  vector<vector<int>>().swap(sort_heap);  // 清空sort_heap的内存
   for (int i = 0; i < flag; ++i)  // 此时顺序为从小到大（需要调整）
     {
       sort_heap.push_back(heap.top());
@@ -803,6 +803,7 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
 int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  // 极大极小值搜索
 {
 #if 1
+    bool first_step_ = true;                          // 标记第一层，方便记录将要下的节点位置
     // alpha 为最大下界，beta为最小上界
     if (dep % 2 ==  0) {  // max层
         int bestvalue = 0;
@@ -810,9 +811,11 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  //
         {
             return calculateScore();  // 估值
         }
+
         priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+        vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        minHeap(heap, flag, thread_num_*multi_);
+        minHeap(heap, flag, thread_num_*multi_, sort_heap);
         counts += flag;
         for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率
         {
@@ -841,8 +844,9 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  //
             return calculateScore();
         }
         priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
+        vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        maxHeap(heap, flag, thread_num_*multi_);
+        maxHeap(heap, flag, thread_num_*multi_, sort_heap);
         counts += flag;
         for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由小到大遍历，提高剪枝效率
         {
@@ -1153,8 +1157,19 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
 
 // 估值函数(采用全局估值)
 int Game::calculateScore()
-{
-  vector<int> weight = { 0,10000000,-1000000,110000,-50000, 110000, -500, 100000, -400, 8000, -400, 50, -20, 50, -20, 3, -1, 3,-1, 10000000, -1000000 };  // 权重
+{                                      //      ------连五------------|-----活4-------|------冲4_A----|-----冲4------|-----活3----|--眠3---|--活2--|眠2--|活1-|---------长连----------|
+  vector<int> black_weight = { 0,1000000,-10000000,50000,-110000, 500, -110000, 400, -100000, 400, -8000, 20, -50, 20, -50, 1, -3, 1,-3, 1000000, -10000000 };  // AI为黑子时对棋型的估值
+  vector<int> white_weight = { 0,10000000,-1000000,110000,-50000, 110000, -500, 100000, -400, 8000, -400, 50, -20, 50, -20, 3, -1, 3,-1, 10000000, -1000000 };  // AI为白子时对棋型的估值
+  vector<int> weight;
+  if (color_) {  // 黑方为AI
+      weight = std::move(black_weight);
+      white_weight.clear();
+      vector<int>().swap(white_weight);
+  } else {
+      weight = std::move(white_weight);
+      black_weight.clear();
+      vector<int>().swap(black_weight);
+  }
   vector<vector<int>>state(4, vector<int>(21, 0));  //统计4个方向上每种棋型的个数
   // 滑动窗口(每次处理一个六元组)
   // 对全局估值
@@ -1502,15 +1517,15 @@ void Game::startGame(GameType t)
   // 初始棋盘
   chess_board_.clear();
   vector<vector<int>>().swap(chess_board_);  // 清空棋盘，防止clear()之后内存的泄露
-  number.clear();
-  vector<vector<int>>().swap(number);  // 清空number数组，防止clear()之后内存的泄露
+  number_.clear();
+  vector<vector<int>>().swap(number_);  // 清空number数组，防止clear()之后内存的泄露
 #if 0
   thread_chess_board_.clear();
   vector<vector<vector<int>>>().swap(thread_chess_board_);  // 清空线程棋盘
   thread_sort_heap.clear();
   vector<vector<vector<int>>>().swap(thread_sort_heap);  // 清空优先队列中的数据
 #endif
-  num = 0;  // 重新初始化
+  num_ = 0;  // 重新初始化
   pointNum = 0;
   for (int i = 0; i <= kGridNum; i++)
     {
@@ -1518,7 +1533,7 @@ void Game::startGame(GameType t)
       for (int j = 0; j < kGridNum; j++)
         lineBoard.push_back(0);
       chess_board_.push_back(lineBoard);
-      number.push_back(lineBoard);
+      number_.push_back(lineBoard);
     }
   // 己方下为true,对方下位false
   player_flag_ = true;  // 下棋状态

@@ -41,14 +41,26 @@ MainWindow::MainWindow(QWidget *parent)
   QAction* actionPVP = new QAction("玩家对战", this);
   QAction* actionPVB = new QAction("人机对战", this);
 
+  // 设置菜单栏及其选项
+  QMenu* menu_func = menuBar()->addMenu(tr("功能"));
+  QAction* save_chess_game = new QAction("保存棋局", this);
+  QAction* repent = new QAction("悔棋", this);
+
   // 给菜单栏添加选项
   menu->addAction(actionPVP);
   menu->addAction(actionPVB);
-
+  menu_func->addAction(save_chess_game);
+  menu_func->addAction(repent);
   // 菜单栏的信号与槽
-  connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);
-  connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);
-  // TODO:可以撤销打印队伍名
+  connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);  // 人人对战
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);  // 人机对战
+  connect(save_chess_game, &QAction::triggered, this, [this](){   // 保存当前棋局
+      QPixmap pixMap_ = QWidget::grab();
+      pixMap_.save("C:/Users/49013/Desktop/savedchessGame/chessGame.png", "PNG");
+      qDebug() << "saved";
+  });
+  // TODO:悔棋操作
+  connect(repent, &QAction::triggered, this, &MainWindow::repentance);
   // connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
   connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);  // 开局选择先后手
   initGame(PERSON);  // 默认为PVP开局
@@ -142,11 +154,11 @@ void MainWindow::initiativeDialog()  // 先手对话框
         ui->label_black->setText("黑方用户:计算机");
         ui->label_white->setText("白方用户:" + text);
         game_->chess_board_[7][7] = 1;
-        game_->number[7][7] = ++game_->num;
+        game_->number_[7][7] = ++game_->num_;
         game_->chess_board_[7][6] = -1;
-        game_->number[7][6] = ++game_->num;
+        game_->number_[7][6] = ++game_->num_;
         game_->chess_board_[9][5] = 1;
-        game_->number[9][5] = ++game_->num;
+        game_->number_[9][5] = ++game_->num_;
         game_->player_flag_ = !game_->player_flag_;
         game_->pointNum = 3;  // 针对疏星局选择的打点个数为3
         startPointAI();  // 提示AI打点个数的对话框
@@ -244,7 +256,7 @@ void MainWindow::endPointPC()
         // 白子帮黑子执行，打点结束由AI进行选择
         game_->chess_board_[bestPoint.first][bestPoint.second] = 1;
         game_->player_flag_ = !game_->player_flag_;  // 交换执行权
-        game_->number[bestPoint.first][bestPoint.second] = ++game_->num;
+        game_->number_[bestPoint.first][bestPoint.second] = ++game_->num_;
         record_.clear();
         vector<pair<int, int>>().swap(record_);
       }
@@ -386,7 +398,25 @@ void MainWindow::exchangeDialogAI()
       }
       break;
     default: break;
-    }
+  }
+}
+
+
+/*
+ 因为用户走子之后，未单独分配出线程进行悔棋，因此只能等到AI走子之后才进行悔棋。
+此时悔棋则悔两步，因此playflag的状态，以及枚举run_procedure不需要改变，只需要回退两步，对计数num-2，并对打印整个棋盘计数的number_数组清零，最后再对棋盘进行一次更新
+ */
+void MainWindow::repentance()
+{
+        auto sit = game_->trace_.back();                             // 最近一次更新的棋子坐标
+         game_->chess_board_[sit.first][sit.second] = 0;    // 对AI子进行一次清空
+         game_->number_[sit.first][sit.second] = 0;            // 对计数数组中对应该坐标的元素清空为0
+         game_->trace_.pop_back();                                    // 容器末尾进行弹出操作
+         auto sit_prev = game_->trace_.back();
+         game_->chess_board_[sit_prev.first][sit_prev.second] = 0;    // 并同时清空上次用户的走子（即悔棋）
+         game_->number_[sit_prev.first][sit_prev.second] = 0;
+         game_->num_ -= 2;                                                                   // 回退两次计数
+         update();                                                                                  // 最后再对棋盘进行一次更新
 }
 
 void MainWindow::paintEvent(QPaintEvent*)
@@ -448,7 +478,7 @@ void MainWindow::paintEvent(QPaintEvent*)
             painter.setFont(chessFont);         // 使用字体
             painter.setPen(Qt::red);  // 设置画笔颜色
             painter.drawText(start_x_+ i * grid_x_ - grid_x_ * (3.5 / 12.0), start_y_ + j * grid_y_ + grid_y_ * (3.0 / 12.0)
-                             , QString::number(game_->number[i][j]));
+                             , QString::number(game_->number_[i][j]));
             painter.setPen(Qt::black);  // 设置画笔颜色
 
           } else if (game_->chess_board_[i][j] == -1) {
@@ -461,7 +491,7 @@ void MainWindow::paintEvent(QPaintEvent*)
             painter.setFont(chessFont);         // 使用字体
             painter.setPen(Qt::red);  // 设置画笔颜色
             painter.drawText(start_x_+ i * grid_x_ - grid_x_ * (3.5 / 12.0), start_y_ + j * grid_y_ + grid_y_ * (3.0 / 12.0)
-                             , QString::number(game_->number[i][j]));
+                             , QString::number(game_->number_[i][j]));
             painter.setPen(Qt::black);  // 设置画笔颜色
 
           } else if (game_->chess_board_[i][j] == -2) {  // 绘制打点子
@@ -529,19 +559,21 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
     // 人下棋，并且不能抢机器的棋
     if  (game_->run_procedure_ == DONE) {  // 且没有在打点
           chessOneByPerson();
-          if (game_->number[game_->chess_x_][game_->chess_y_] == 3) {  // AI选择是否交换的对话框
+          if (game_->number_[game_->chess_x_][game_->chess_y_] == 3) {  // AI选择是否交换的对话框
               exchangeDialogAI();
             }
-          if (game_->battle_type_ == ROBOT && game_->number[game_->chess_x_][game_->chess_y_] == 4) {
+          if (game_->battle_type_ == ROBOT && game_->number_[game_->chess_x_][game_->chess_y_] == 4) {
               startPointPC();  // 提示开始打点（机器自动打点）
               // 打出当前（黑子）前几个最优势的棋，然后用户（白棋）选择电脑（黑棋）下哪一步
               int flag = 0;
               priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
-              game_->minHeap(heap, flag, game_->pointNum);
+              vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
+              game_->minHeap(heap, flag, game_->pointNum, sort_heap);
               for (int i = 0; i < game_->pointNum; ++i) {
-                  int row = game_->sort_heap[i][1];
-                  int col = game_->sort_heap[i][2];
+                  int row = sort_heap[i][1];
+                  int col = sort_heap[i][2];
                   game_->chess_board_[row][col] = -2;
+                  ai_record_.push_back(make_pair(row, col));    //  记录AI打点的坐标
                 }
               game_->run_procedure_ = DONE;  // 玩家执行棋
               pointing_ai_ = true;
@@ -552,7 +584,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
     if (game_->battle_type_ == ROBOT  && game_->run_procedure_ == CHESSING
         && !game_->isDeadGame() &&  // 解决棋走完还下的问题
         !game_->isWin(game_->chess_x_, game_->chess_y_) &&
-        game_->number[game_->chess_x_][game_->chess_y_] >= 3 &&  // 指定开局黑方走三步
+        game_->number_[game_->chess_x_][game_->chess_y_] >= 3 &&  // 指定开局黑方走三步
         !pointing_)  // 打点时AI不走子
       {
         // 用定时器做一个延迟
@@ -561,7 +593,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
               game_->actionByAI();  // AI走子
               QSound::play(CHESS_ONE_SOUND);
               update();  // 更新棋盘
-              if (game_->number[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点
+              if (game_->number_[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点
                   startPointPC();
                   pointing_ = true;  // 正在打点
                 }
@@ -581,15 +613,18 @@ void MainWindow::chessOneByPerson()
         game_->updateMap(game_->chess_x_, game_->chess_y_);
         game_->run_procedure_ = CHESSING;
         QSound::play(CHESS_ONE_SOUND);  // 发出下棋的声音
-        if (pointing_ai_) {  // 对所AI绘制的打点子进行清空
-            for (int i = 0; i < game_->pointNum; ++i) {
-                int row = game_->sort_heap[i][1];
-                int col = game_->sort_heap[i][2];
+        if (pointing_ai_) {  // 对所AI绘制的打点子进行清空, 并走子
+            for (auto i : ai_record_) {
+                int row = i.first;
+                int col = i.second;
                 if (row == game_->chess_x_ && col == game_->chess_y_) {  // 选择下的棋就不必回溯
                     continue;
                   }
                 game_->chess_board_[row][col] = 0;  // 回溯
               }
+            // 清空AI打点子结束后，清空容器
+            ai_record_.clear();
+            vector<pair<int, int>>().swap(ai_record_);
             pointing_ai_ = false;
             game_->run_procedure_ = DONE;
           }
