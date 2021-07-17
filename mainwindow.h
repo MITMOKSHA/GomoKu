@@ -37,8 +37,8 @@ class MainWindow : public QMainWindow
   void printTeamNameDialog();    // 打印队伍名对话框
   void startPointPC();                         // 开始打点提示对话框（玩家先手）
   void startPointAI();                          // 开始打点提示对话框（AI先手）
-  void endPointPC();                           // 打点结束提示对话框（玩家先手）
-  void endPointAI();                        // 打点结束提示对话框（AI先手）
+  void endPointPC();                           // 玩家打点结束提示对话框
+  void endPointAI();                        // 打点结束提示对话框
   bool exchange();                         // 针对开局库决定是否换手
   void exchangeDialogPC();              // 玩家决定是否换手对话框
   void exchangeDialogAI();             //  AI提示是否换手对话框

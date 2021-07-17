@@ -130,6 +130,7 @@ void MainWindow::initiativeDialog()  // 先手对话框
   int ret = btnValue.exec();
   switch (ret) {
     case QMessageBox::No: {
+        game_->color_ = false;
         ui->label_black->setText("黑方用户:" + text);
         ui->label_white->setText("白方用户:计算机");
         initGame(game_->battle_type_); // 初始化棋盘
@@ -137,9 +138,9 @@ void MainWindow::initiativeDialog()  // 先手对话框
       }
       break;
     case QMessageBox::Ok: {
+        game_->color_ = true;
         ui->label_black->setText("黑方用户:计算机");
         ui->label_white->setText("白方用户:" + text);
-        // TODO:只选择了一种默认开局（疏星局1-7平衡）,需添加各种开局库
         game_->chess_board_[7][7] = 1;
         game_->number[7][7] = ++game_->num;
         game_->chess_board_[7][6] = -1;
@@ -147,7 +148,6 @@ void MainWindow::initiativeDialog()  // 先手对话框
         game_->chess_board_[9][5] = 1;
         game_->number[9][5] = ++game_->num;
         game_->player_flag_ = !game_->player_flag_;
-        // TODO提示电脑针对开局库选择的打点个数
         game_->pointNum = 3;  // 针对疏星局选择的打点个数为3
         startPointAI();  // 提示AI打点个数的对话框
         exchangeDialogPC();  // 玩家选择是否交换的对话框
@@ -347,8 +347,8 @@ void MainWindow::exchangeDialogPC()
   int ret = btnValue.exec();
   switch (ret) {
     case QMessageBox::Ok: {  // 交换执行棋
-        game_->actionByAI();
-        startPointPC();
+        game_->actionByAI();  // AI走一步后开始打点
+        startPointPC();            // 开始打点
         pointing_ = true;  // 正在打点
         ui->label_black->setText("黑方用户:" + text);
         ui->label_white->setText("白方用户:计算机");
@@ -532,7 +532,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
           if (game_->number[game_->chess_x_][game_->chess_y_] == 3) {  // AI选择是否交换的对话框
               exchangeDialogAI();
             }
-          if (game_->battle_type_ == ROBOT && game_->number[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点 TODO:点击第四个子会出现bug
+          if (game_->battle_type_ == ROBOT && game_->number[game_->chess_x_][game_->chess_y_] == 4) {
               startPointPC();  // 提示开始打点（机器自动打点）
               // 打出当前（黑子）前几个最优势的棋，然后用户（白棋）选择电脑（黑棋）下哪一步
               int flag = 0;

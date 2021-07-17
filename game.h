@@ -3,6 +3,7 @@
 
 #include <queue>
 #include <vector>
+#include <mutex>
 #include <QString>
 
 using namespace std;
@@ -37,7 +38,7 @@ enum class Prohibit: int {THREE_PRO,  // 三三禁手
 // 包含了五子棋游戏的基本过程操作
 class Game
 {
-public:
+ public:
   Game(){
     stat_ = vector<int>(11, 0);  // 初始化
   }
@@ -49,36 +50,48 @@ public:
   void updateMap(int x, int y);           //  更新回合状态
   void actionByAI();                           // 机器执行下棋
   int calculateScore();                        // 估值函数
+  int thread_calculateScore(int threadId);          // 线程版本的估值函数
   void startGame(GameType);           // 开始游戏
-  int AlphaBeta(int dep, pair<int, int>& maxPoints, int alpha, int beta);                                                                                           // αβ剪枝
-  void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int);       // 大顶堆
-  void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int);  // 小顶堆
+  int AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints);                                                                                           // αβ剪枝
+  int threadAlphaBeta(int dep, int threadIndex, vector<pair<int, int>>& maxPoints, int alpha, int beta);                                                   // 多线程AlphaBeta剪枝
+  void threadDistribute();                                                                                                                                                             // 线程分配
+  void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int);       // 大根堆
+  void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int);  // 小根堆
+  void threadMaxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, int);       // 大顶堆
+  void threadMinHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, int);  // 小顶堆
   void judgeChessTypeEva(vector<vector<int>>&, vector<int>&);                                                                                                  // 判断棋局估值
   void seekKillBlack(vector<pair<int, int>>&, int);       // 寻找黑杀棋
   void seekKillWhite(vector<pair<int, int>>&, int);       // 寻找白杀棋
   bool analyse_kill(int dep, pair<int, int>&);     // 算杀
   bool judgeProhibit(vector<vector<int>>&);  // TODO判断禁手
   void openLib();                                               // TODO开局库
-  void updatePoint(int x, int y);                       // 更新打点棋TODO
+  void updatePoint(int x, int y);                       // 更新打点棋
 
-private:
+ private:
   GameStatus running_status_;              // 运行状态
   GameType battle_type_;                     // 对战模式
   RuningStatus run_procedure_;           // 下棋状态
   vector<vector<int>> chess_board_;  // 0表示位置空，1表示黑棋，-1表示白棋
+  vector<vector<vector<int>>> thread_chess_board_;  // 线程版的棋盘
   vector<vector<int>> number;          // 给棋子计数
   vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
+  vector<vector<vector<int>>> thread_sort_heap;
   int num = 0;                                     // 计数数字
   bool player_flag_;                             // 下棋状态(己方为true，敌方为false)
   vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
   int chess_y_ = -1;
   int depth_ = 2;                                 // 搜索树深度
-  int kill_depth_ = 8;                          // 算杀时搜索树的深度
+  int kill_depth_ = 8;
   Result result_;                                 // 判断是否存在必胜棋
   Prohibit prohibit_;                            // 判断禁手
   int pointNum = 0;                           // 打点数
-  QString prompt_text_;  // 执行方的提示文本
+  QString prompt_text_;                // 执行方的提示文本
+  mutex m_mutex_;                         // 自旋锁
+  int thread_num_ = 5;                     // 线程数
+  int multi_ = 2;                               // 博弈树宽度 = multi * thread_num_
+  bool color_;                                     // 判断哪边是电脑, 黑方是电脑为true, 白方是电脑为false
+  bool first_step_ = true;                          // 标记第一层，方便记录将要下的节点位置
 };
 
 #endif // GAME_H_
