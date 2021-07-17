@@ -54,14 +54,13 @@ MainWindow::MainWindow(QWidget *parent)
   // 菜单栏的信号与槽
   connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);  // 人人对战
   connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);  // 人机对战
-  connect(save_chess_game, &QAction::triggered, this, [this](){   // 保存当前棋局
+  connect(save_chess_game, &QAction::triggered, this, [this](){   // 保存当前棋局, 保存至当前电脑的桌面
       QPixmap pixMap_ = QWidget::grab();
       pixMap_.save("C:/Users/49013/Desktop/savedchessGame/chessGame.png", "PNG");
       qDebug() << "saved";
   });
-  // TODO:悔棋操作
   connect(repent, &QAction::triggered, this, &MainWindow::repentance);
-  // connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
   connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);  // 开局选择先后手
   initGame(PERSON);  // 默认为PVP开局
 }
@@ -180,6 +179,7 @@ void MainWindow::printTeamNameDialog()
       ui->label_black->setText("黑方用户:" + text);
       ui->label_white->setText("白方用户:计算机");
     }
+    ui->label_vs->setText("VS");
 }
 
 void MainWindow::pointDialog()
@@ -428,7 +428,7 @@ void MainWindow::paintEvent(QPaintEvent*)
   pen.setWidth(3);  // 调整粗细
   painter.setPen(pen);
   QBrush brush;
-  painter.drawPixmap(0, 0, 1000, 1000, QPixmap("../棋盘背景.png"));
+  painter.drawPixmap(0, 0, 1000, 1000, QPixmap("D:/Qt project/Gobang/棋盘背景.png"));
 
   // 绘制棋盘
   for (int i = 0; i < kGridNum; ++i)
@@ -450,7 +450,7 @@ void MainWindow::paintEvent(QPaintEvent*)
   // 绘制字符
   QFont font ("Microsoft YaHei", 17, 80, false);
   font.setCapitalization(QFont::QFont::AllUppercase);  // 设置为大写
-  font.setLetterSpacing(QFont::AbsoluteSpacing, grid_x_ - font.pointSize() - pen.width() / 2);  // 设置字符间的间距
+  font.setLetterSpacing(QFont::AbsoluteSpacing, grid_x_ - font.pointSize() - pen.width() / 2 - 4);  // 设置字符间的间距
   painter.setFont(font);         // 使用字体
   painter.setPen(Qt::black);  // 设置画笔颜色
   painter.drawText(start_x_ - font.pointSize() / 2, start_y_ + kGridNum * grid_y_ + 5, tr("abcdefghijklmno"));  // 绘制文本
