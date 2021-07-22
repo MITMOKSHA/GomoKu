@@ -60,7 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
       qDebug() << "saved";
   });
   connect(repent, &QAction::triggered, this, &MainWindow::repentance);
-  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
+//  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
   connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);  // 开局选择先后手
   initGame(PERSON);  // 默认为PVP开局
 }
@@ -362,6 +362,7 @@ void MainWindow::exchangeDialogPC()
         game_->actionByAI();  // AI走一步后开始打点
         startPointPC();            // 开始打点
         pointing_ = true;  // 正在打点
+        game_->color_ = !game_->color_;      // 交换执行棋
         ui->label_black->setText("黑方用户:" + text);
         ui->label_white->setText("白方用户:计算机");
       }
@@ -383,6 +384,7 @@ void MainWindow::exchangeDialogAI()
   if (exchange()) {  // 可交换
       str = "交换！";
       game_->run_procedure_ = DONE;  // 等同于先让玩家走子
+      game_->color_ = !game_->color_;      // 交换执行棋
       ui->label_black->setText("黑方用户:计算机");
       ui->label_white->setText("白方用户:" + text);
     } else {  // 不可交换

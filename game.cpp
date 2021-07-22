@@ -11,7 +11,6 @@
 
 using namespace std;
 
-static int counts = 0;
 // 棋型
 enum class ChessType: int { OTHER = 0,  // 0, 其他棋型不考虑
                             BLACK_FIVE,  // 10000000
@@ -283,13 +282,12 @@ bool Game::judgeProhibit(vector<vector<int>>& state)  // TODO判断禁手
 
 void Game::actionByAI()  // ai下棋
 {
+    alpha_ = INT_MIN;
+    beta_ = INT_MAX;
   // 从评分中找出最大分数的位置
-  int alpha = INT_MIN;  // 最大下限
-  int beta = INT_MAX;  // 最小上限
-#if 0
+#if 1
   for (int i = 0; i < thread_num_; ++i) {  // 8个线程
-      thread_chess_board_.push_back(chess_board_);  // 复制棋盘
-      thread_sort_heap.push_back(vector<vector<int>>{});  // 初始化存放堆数据的序列
+      thread_chess_board_.push_back(chess_board_);  // 初始化线程棋盘
   }
 #endif
   pair<int, int> maxPoints;
@@ -298,18 +296,15 @@ void Game::actionByAI()  // ai下棋
 //      // AI走黑子
 //      if (!analyse_kill(kill_depth_, maxPoints))
       // 分配8个线程进行alphabeta剪枝
-# if 0
-      priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
-      int flag = 0;  // 标记记录最佳估值的个数
-      minHeap(heap, flag, thread_num_*multi_);
-      thread t1(&Game::threadAlphaBeta, this, depth_, 0, ref(maxPoints), alpha, beta);
-      thread t2(&Game::threadAlphaBeta, this, depth_, 1, ref(maxPoints), alpha, beta);
-      thread t3(&Game::threadAlphaBeta, this, depth_, 2, ref(maxPoints), alpha, beta);
-      thread t4(&Game::threadAlphaBeta, this, depth_, 3, ref(maxPoints), alpha, beta);
-      thread t5(&Game::threadAlphaBeta, this, depth_, 4, ref(maxPoints), alpha, beta);
-      thread t6(&Game::threadAlphaBeta, this, depth_, 5, ref(maxPoints), alpha, beta);
-      thread t7(&Game::threadAlphaBeta, this, depth_, 6, ref(maxPoints), alpha, beta);
-      thread t8(&Game::threadAlphaBeta, this, depth_, 7, ref(maxPoints), alpha, beta);
+# if 1
+      thread t1(&Game::threadAlphaBeta, this, depth_, 0, ref(maxPoints));
+      thread t2(&Game::threadAlphaBeta, this, depth_, 1, ref(maxPoints));
+      thread t3(&Game::threadAlphaBeta, this, depth_, 2, ref(maxPoints));
+      thread t4(&Game::threadAlphaBeta, this, depth_, 3, ref(maxPoints));
+      thread t5(&Game::threadAlphaBeta, this, depth_, 4, ref(maxPoints));
+      thread t6(&Game::threadAlphaBeta, this, depth_, 5, ref(maxPoints));
+      thread t7(&Game::threadAlphaBeta, this, depth_, 6, ref(maxPoints));
+      thread t8(&Game::threadAlphaBeta, this, depth_, 7, ref(maxPoints));
       t1.join();  // 等待线程结束
       t2.join();
       t3.join();
@@ -319,24 +314,21 @@ void Game::actionByAI()  // ai下棋
       t7.join();
       t8.join();
 #endif
-#if 1
-      AlphaBeta(depth_, alpha, beta, maxPoints);
+#if 0
+      threadAlphaBeta(depth_, 0, maxPoints,  alpha, beta);
 #endif
       } else {
       // AI走白子
 //      if (!analyse_kill(kill_depth_-1, maxPoints))
-#if 0
-      priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
-      int flag = 0;  // 标记记录最佳估值的个数
-      maxHeap(heap, flag, thread_num_*multi_);
-      thread t1(&Game::threadAlphaBeta, this, depth_-1, 0, ref(maxPoints), alpha, beta);
-      thread t2(&Game::threadAlphaBeta, this, depth_-1, 1, ref(maxPoints), alpha, beta);
-      thread t3(&Game::threadAlphaBeta, this, depth_-1, 2, ref(maxPoints), alpha, beta);
-      thread t4(&Game::threadAlphaBeta, this, depth_-1, 3, ref(maxPoints), alpha, beta);
-      thread t5(&Game::threadAlphaBeta, this, depth_-1, 4, ref(maxPoints), alpha, beta);
-      thread t6(&Game::threadAlphaBeta, this, depth_-1, 5, ref(maxPoints), alpha, beta);
-      thread t7(&Game::threadAlphaBeta, this, depth_-1, 6, ref(maxPoints), alpha, beta);
-      thread t8(&Game::threadAlphaBeta, this, depth_-1, 7, ref(maxPoints), alpha, beta);
+#if 1
+      thread t1(&Game::threadAlphaBeta, this, depth_-1, 0, ref(maxPoints));
+      thread t2(&Game::threadAlphaBeta, this, depth_-1, 1, ref(maxPoints));
+      thread t3(&Game::threadAlphaBeta, this, depth_-1, 2, ref(maxPoints));
+      thread t4(&Game::threadAlphaBeta, this, depth_-1, 3, ref(maxPoints));
+      thread t5(&Game::threadAlphaBeta, this, depth_-1, 4, ref(maxPoints));
+      thread t6(&Game::threadAlphaBeta, this, depth_-1, 5, ref(maxPoints));
+      thread t7(&Game::threadAlphaBeta, this, depth_-1, 6, ref(maxPoints));
+      thread t8(&Game::threadAlphaBeta, this, depth_-1, 7, ref(maxPoints));
       t1.join();
       t2.join();
       t3.join();
@@ -347,15 +339,13 @@ void Game::actionByAI()  // ai下棋
       t8.join();
 # endif
 
-#if 1
-        AlphaBeta(depth_ - 1, alpha, beta, maxPoints);
+#if 0
+      threadAlphaBeta(depth_ - 1, 0, maxPoints,  alpha, beta);
 #endif
     }
-#if 0
+#if 1
   thread_chess_board_.clear();
   vector<vector<vector<int>>>().swap(thread_chess_board_);  // 清空线程棋盘
-  thread_sort_heap.clear();
-  vector<vector<vector<int>>>().swap(thread_sort_heap);  // 清空优先队列中的数据
 #endif
   chess_x_ = maxPoints.first; // 记录落子点
   chess_y_ = maxPoints.second;
@@ -381,7 +371,7 @@ void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<
                     marked[i][col] == false // 且没有被估值过
                     ) {
                     chess_board_[i][col] = -1;
-                    val = calculateScore();
+                    val = calculateScore();   // 当前坐标点估值
                     if (flag < max_flag) {
                         heap.push(vector<int>{val, i, col});  // 向大顶堆中添加元素
                         marked[i][col] = true;
@@ -463,8 +453,6 @@ void Game::maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<
               }
           }
       }
-  marked.clear();
-  vector<vector<bool>>().swap(marked);
   for (int i = 0; i < flag; ++i)  // 此时顺序为从大到小
     {
       sort_heap.push_back(heap.top());  // 放入数组中
@@ -571,8 +559,6 @@ void Game::minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vect
               }
           }
       }
-  marked.clear();
-  vector<vector<bool>>().swap(marked);
   for (int i = 0; i < flag; ++i)  // 此时顺序为从小到大（需要调整）
     {
       sort_heap.push_back(heap.top());
@@ -580,7 +566,7 @@ void Game::minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vect
   }
 }
 
-void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<vector<int>>>& heap, int& flag, int max_flag, int threadId)
+void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<vector<int>>>& heap, int& flag, int max_flag, int threadId, vector<vector<int>>& thread_sort_heap)
 {
     // 防止对同一个位置重复估值，只针对本次，结束时销毁
     vector<vector<bool>> marked(kGridNum, vector<bool>(kGridNum, false));  // 添加标记（初始化都为未标记）
@@ -597,7 +583,7 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
                       marked[i][col] == false // 且没有被估值过
                       ) {
                       thread_chess_board_[threadId][i][col] = -1;
-                      val = thread_calculateScore(threadId);
+                      val = thread_calculateScore(threadId);   // 当前坐标点估值
                       if (flag < max_flag) {
                           heap.push(vector<int>{val, i, col});  // 向大顶堆中添加元素
                           marked[i][col] = true;
@@ -679,18 +665,14 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
                 }
             }
         }
-    marked.clear();
-    vector<vector<bool>>().swap(marked);
-    thread_sort_heap[threadId].clear();
-    vector<vector<int>>().swap(thread_sort_heap[threadId]);  // 清空sort_heap的内存
     for (int i = 0; i < flag; ++i)  // 此时顺序为从大到小
       {
-        thread_sort_heap[threadId].push_back(heap.top());  // 放入数组中
+        thread_sort_heap.push_back(heap.top());  // 放入数组中
         heap.pop();
       }
 }
 
-void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, greater<vector<int>>>& heap, int& flag, int max_flag, int threadId)
+void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, greater<vector<int>>>& heap, int& flag, int max_flag, int threadId, vector<vector<int>>& thread_sort_heap)
 {
     // 防止对同一个位置重复估值，只针对本次，结束时销毁
     vector<vector<bool>> marked(kGridNum, vector<bool>(kGridNum, false));  // 添加标记（初始化都为未标记）
@@ -789,21 +771,16 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
                 }
             }
         }
-    marked.clear();
-    vector<vector<bool>>().swap(marked);
-    thread_sort_heap[threadId].clear();
-    vector<vector<int>>().swap(thread_sort_heap[threadId]);  // 清空sort_heap的内存
     for (int i = 0; i < flag; ++i)  // 此时顺序为从小到大（需要调整）
       {
-        thread_sort_heap[threadId].push_back(heap.top());
+        thread_sort_heap.push_back(heap.top());
         heap.pop();
     }
 }
 
-int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  // 极大极小值搜索
+int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex)  // 极大极小值搜索
 {
-#if 1
-    bool first_step_ = true;                          // 标记第一层，方便记录将要下的节点位置
+#if 0  // 单进程版本
     // alpha 为最大下界，beta为最小上界
     if (dep % 2 ==  0) {  // max层
         int bestvalue = 0;
@@ -811,31 +788,23 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  //
         {
             return calculateScore();  // 估值
         }
-
         priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
         vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
         minHeap(heap, flag, thread_num_*multi_, sort_heap);
-        counts += flag;
-        for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率
+        for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率(快速取到最大下界)
         {
+            counts++;
             int row = sort_heap[i][1];
             int col = sort_heap[i][2];
             chess_board_[row][col] = 1;                          // 虚拟走子
             bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints);  // 返回极大值
             chess_board_[row][col] = 0;                          // 回溯
             if (alpha < bestvalue)  // 更新alpha的值
-            {
-                if (first_step_) {  // 若为第一层，记录坐标
-                    maxPoints.first = row;
-                    maxPoints.second = col;
-                }
                 alpha = bestvalue;  // max层更新自己的下界
-                if (alpha >= beta)
-                    break;
-            }
+            if (alpha >= beta)
+                break;
         }
-        first_step_ = false;
         return alpha;
     } else {  // min层
         int bestvalue = 0;
@@ -847,9 +816,181 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  //
         vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
         maxHeap(heap, flag, thread_num_*multi_, sort_heap);
-        counts += flag;
+        for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由小到大遍历，提高剪枝效率(快速取到最小上界)
+        {
+            counts++;
+            int row = sort_heap[i][1];
+            int col = sort_heap[i][2];
+            chess_board_[row][col] = -1;  // 虚拟AI走子
+            bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints);  // 返回极小值
+            chess_board_[row][col] = 0;  // 回溯
+            if (beta > bestvalue)  // 更新beta的值
+                beta = bestvalue;  // min层更新自己的上界
+            if (alpha >= beta)  // 进行剪枝
+                break;
+        }
+        return beta;
+    }
+#endif
+#if 1  // 多线程版本
+    // alpha 为最大下界，beta为最小上界
+    if (dep % 2 ==  0) {                                                                                                        // max层
+        if (dep == 0 || isDeadGame())  // 递归终止的条件，当前层出现必胜棋
+        {
+            return thread_calculateScore(threadIndex);  // 估值
+        }
+        priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+        vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
+        int flag = 0;  // 标记记录最佳估值的个数
+        threadMinHeap(heap, flag, multi_, threadIndex, thread_sort_heap);
+        for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率
+        {
+            counts++;
+            int row = thread_sort_heap[i][1];
+            int col = thread_sort_heap[i][2];
+            thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
+            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex);  // 返回极大值
+            thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
+            if (alpha < bestvalue)  // 更新alpha的值
+            {
+                alpha = bestvalue;  // max层更新自己的下界
+            }
+            if (alpha >= beta)
+                break;
+        }
+        return alpha;
+      }
+    else {  // min层
+        if (dep == 0 || isDeadGame())  // 必杀棋直接返回结果
+        {
+            return thread_calculateScore(threadIndex);
+        }
+        priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
+        vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
+        int flag = 0;  // 标记记录最佳估值的个数
+        threadMaxHeap(heap, flag, multi_, threadIndex,thread_sort_heap);
         for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由小到大遍历，提高剪枝效率
         {
+            qDebug() << "threadID:" << threadIndex << "double" << i;
+            counts++;
+            int row = thread_sort_heap[i][1];
+            int col = thread_sort_heap[i][2];
+            thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
+            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex);  // 返回极小值
+            thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
+            if (beta > bestvalue)  // 更新beta的值
+            {
+                beta = bestvalue;  // min层更新自己的上界
+            }
+            if (alpha >= beta)  // 进行剪枝
+                break;
+        }
+        return beta;
+    }
+#endif
+}
+
+
+int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
+{    
+#if 1  // 多线程版本
+    // alpha 为最大下界，beta为最小上界
+    if (dep % 2 ==  0) {                                                                                                        // max层
+        priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+        vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
+        int flag = 0;  // 标记记录最佳估值的个数
+        threadMinHeap(heap, flag, thread_num_*multi_, threadIndex, thread_sort_heap);
+//        qDebug() << "threadID:" << threadIndex << "nodeNum" << flag;
+        for (int i = flag * threadIndex / thread_num_; i < flag * (threadIndex+1) / thread_num_; ++i)
+        {
+            qDebug() << "threadID:" << threadIndex << "i" << i;
+            counts++;
+            int row = thread_sort_heap[i][1];
+            int col = thread_sort_heap[i][2];
+            thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
+            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex);  // 返回极大值
+            thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
+            lock_guard<mutex> locker(m_mutex_);   // RAII机制
+            if (alpha_ < bestvalue)  // 更新alpha的值
+            {
+                alpha_ = bestvalue;  // max层更新自己的下界
+                maxPoints.first = row;                                                                              // 在第一层记录坐标
+                maxPoints.second = col;
+//                qDebug() << "Row" << row << " Col" << col << " Val" << alpha_ << " Id" << threadIndex;
+            }
+        }
+//        qDebug() << alpha_;
+//        qDebug() << maxPoints.first << ", " << maxPoints.second;
+        return alpha_;
+      }
+    else {  // min层
+        priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
+        vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
+        int flag = 0;  // 标记记录最佳估值的个数
+        threadMaxHeap(heap, flag, thread_num_*multi_, threadIndex,thread_sort_heap);
+        for (int i = flag * threadIndex / thread_num_; i < flag * (threadIndex+1) / thread_num_; ++i)
+        {
+            counts++;
+            int row = thread_sort_heap[i][1];
+            int col = thread_sort_heap[i][2];
+            thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
+            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex);  // 返回极小值
+            thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
+            lock_guard<mutex> locker(m_mutex_);   // RAII机制
+            if (beta_ > bestvalue)  // 更新beta的值
+            {
+                maxPoints.first = row;                                                                              // 在第一层记录坐标
+                maxPoints.second = col;
+                beta_ = bestvalue;  // min层更新自己的上界
+            }
+        }
+        return beta_;
+    }
+#endif
+#if 0  // 单进程版本
+    // alpha 为最大下界，beta为最小上界
+    if (dep % 2 ==  0) {                                                                                                        // max层
+        int bestvalue = 0;
+        if (dep == 0 || isDeadGame())  // 递归终止的条件，当前层出现必胜棋
+        {
+            return calculateScore();  // 估值
+        }
+        priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
+        vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
+        int flag = 0;  // 标记记录最佳估值的个数
+        minHeap(heap, flag, thread_num_*multi_, sort_heap);
+        for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率
+        {
+            counts++;
+            int row = sort_heap[i][1];
+            int col = sort_heap[i][2];
+            chess_board_[row][col] = 1;                          // 虚拟走子
+            bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints);  // 返回极大值
+            chess_board_[row][col] = 0;                          // 回溯
+            if (alpha < bestvalue)  // 更新alpha的值
+            {
+                alpha = bestvalue;  // max层更新自己的下界
+                maxPoints.first = row;                                                                              // 在第一层记录坐标
+                maxPoints.second = col;
+            }
+            if (alpha >= beta)
+                break;
+        }
+        return alpha;
+      }
+    else {  // min层
+        int bestvalue = 0;
+        if (dep == 0 || isDeadGame())  // 必杀棋直接返回结果
+        {
+            return calculateScore();
+        }
+        priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
+        vector<vector<int>> sort_heap;      // 存储排序后估值较好的点
+        int flag = 0;  // 标记记录最佳估值的个数
+        maxHeap(heap, flag, thread_num_*multi_, sort_heap);
+        for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由小到大遍历，提高剪枝效率
+        {
+            counts++;
             int row = sort_heap[i][1];
             int col = sort_heap[i][2];
             chess_board_[row][col] = -1;  // 虚拟AI走子
@@ -857,136 +998,16 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints)  //
             chess_board_[row][col] = 0;  // 回溯
             if (beta > bestvalue)  // 更新beta的值
             {
-                if (first_step_) {  // 若为第一层, 记录坐标
-                    maxPoints.first = row;
-                    maxPoints.second = col;
-                }
+                maxPoints.first = row;                                                                              // 在第一层记录坐标
+                maxPoints.second = col;
                 beta = bestvalue;  // min层更新自己的上界
-                if (alpha >= beta)  // 进行剪枝
-                    break;
             }
+            if (alpha >= beta)  // 进行剪枝
+                break;
         }
         return beta;
-        first_step_ = false;
     }
 #endif
-#if 0
-  // alpha 为最大下界，beta为最小上界
-  if (dep % 2 ==  0) {  // max层
-      int bestvalue = 0;
-      if (dep == 0 || isDeadGame())  // 递归终止的条件，当前层出现必胜棋
-        {
-          return thread_calculateScore(threadIndex);  // 估值
-        }
-      priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
-      int flag = 0;  // 标记记录最佳估值的个数
-      threadMinHeap(heap, flag, thread_num_*multi_, threadIndex);
-      for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率
-        {
-          int row = thread_sort_heap[threadIndex][i][1];
-          int col = thread_sort_heap[threadIndex][i][2];
-          thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
-          bestvalue = AlphaBeta(dep - 1, maxPoints, alpha, beta, threadIndex);  // 返回极大值
-          thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
-          if (alpha < bestvalue)  // 更新alpha的值
-            {
-              alpha = bestvalue;  // max层更新自己的下界
-              if (alpha >= beta)
-                break;
-            }
-        }
-      return alpha;
-    }
-  else {  // min层
-      int bestvalue = 0;
-      if (dep == 0 || isDeadGame())  // 必杀棋直接返回结果
-        {
-          return thread_calculateScore(threadIndex);
-        }
-      priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
-      int flag = 0;  // 标记记录最佳估值的个数
-      threadMaxHeap(heap, flag, thread_num_*multi_, threadIndex);
-      for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由小到大遍历，提高剪枝效率
-        {
-          int row = thread_sort_heap[threadIndex][i][1];
-          int col = thread_sort_heap[threadIndex][i][2];
-          thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
-          bestvalue = AlphaBeta(dep - 1, maxPoints, alpha, beta, threadIndex);  // 返回极小值
-          thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
-          if (beta > bestvalue)  // 更新beta的值
-            {
-              beta = bestvalue;  // min层更新自己的上界
-              if (alpha >= beta)  // 进行剪枝
-                break;
-            }
-        }
-      return beta;
-  }
-#endif
-}
-
-#if 0
-int Game::threadAlphaBeta(int dep, int threadIndex, vector<pair<int, int>> &maxPoints, int alpha, int beta)
-{
-    // alpha 为最大下界，beta为最小上界
-    if (dep % 2 ==  0) {  // max层
-        int bestvalue = 0;
-        for (int i = threadIndex * multi_; i < (threadIndex+1) * multi_; ++i)  // 异步不需要按顺序分配
-          {
-            int row = sort_heap[i][1];  // 取最优估值坐标点
-            int col = sort_heap[i][2];
-            thread_chess_board_[threadIndex][row][col] = 1;                           // 虚拟走子
-            bestvalue = AlphaBeta(dep - 1, maxPoints, alpha, beta, threadIndex);  // 返回极大值
-            thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
-            {
-                lock_guard<mutex> locker(m_mutex_);   // RAII机制，加锁出作用域自动释放
-                if (alpha < bestvalue)  // 更新alpha的值,每个线程都会更新相应的best值，出现竞态，加锁
-                {
-                    alpha = bestvalue;  // max层更新自己的下界
-                    maxPoints.clear();
-                    vector<pair<int, int>>().swap(maxPoints);
-                    maxPoints.push_back(make_pair(row, col));  // 存入第一层的坐标点
-                    if (alpha >= beta)  // 剪枝
-                        break;
-                } else if (alpha == bestvalue) {  // 若估值相等，则对估值相等的坐标点进行随机选取
-                    maxPoints.push_back(make_pair(row, col));
-                }
-            }
-          }
-        return alpha;
-      }
-    else {  // min层
-        int bestvalue = 0;
-        for (int i = threadIndex * multi_; i < (threadIndex+1) * multi_; ++i)
-          {
-            int row = sort_heap[i][1];
-            int col = sort_heap[i][2];
-            thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
-            bestvalue = AlphaBeta(dep - 1, maxPoints, alpha, beta, threadIndex);  // 返回极小值
-            thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
-            {
-                lock_guard<mutex> locker(m_mutex_);   // RAII机制
-                if (beta > bestvalue)  // 更新beta的值
-                {
-                    beta = bestvalue;  // min层更新自己的上界
-                    maxPoints.clear();
-                    vector<pair<int, int>>().swap(maxPoints);
-                    maxPoints.push_back(make_pair(row, col));
-                    if (alpha >= beta)  // 进行剪枝
-                        break;
-                } else if (beta == bestvalue) {
-                    maxPoints.push_back(make_pair(row, col));
-                }
-            }
-          }
-        return beta;
-    }
-}
-#endif
-
-void Game::threadDistribute()
-{
-
 }
 
   // 判断棋局估值
@@ -1036,7 +1057,7 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
             }
         } else if ((continue_element[1][ini] == 3 && continue_element[2][0] == 1 && continue_element[3][ini] == 1) ||   // BAAA?A || ?AAA?A
                    (continue_element[0][ini] == 3 && continue_element[1][0] == 1 && continue_element[2][ini] == 1) ||  // AAA?AB || AAA?AA || AAA?A?
-                   (continue_element[1][ini] == 1 && continue_element[2][0] == 1 && continue_element[3][ini] == 3) ||  // BA?AAA || ?A?AAA
+                   (continue_element[1][ini] == 1 && continue_element[2][0] == 1 && continue_element[3][ini] == 3) ||  // BA?AAA ||
                    (continue_element[0][ini] == 2 && continue_element[1][0] == 1 && continue_element[2][ini] == 3) ||  // AA?AAA
                    (continue_element[0][ini] == 1 && continue_element[1][0] == 1 && continue_element[2][ini] == 3) ||  // A?AAAB || A?AAA?
                    (continue_element[1][ini] == 2 && continue_element[2][0] == 1 && continue_element[3][ini] == 2) ||  // BAA?AA || ?AA?AA
@@ -1060,8 +1081,8 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
               type = ChessType::WHITE_LIVE_THREE;
             }
           // AAA??B || ?AAA?B || ??AAAB || AA?A?B || AA??AB || A?AA?B || A??AAB || A?A?AB ====== B??AAA || B?AAA? || BAAA?? || B?A?AA || BA??AA || B?AA?A || BAA??A || BA?A?A
-          // AAA??? ||              ||              || AA?A?? || AA??A?  ||  A?AA?? || A??AA? || A?A?A? ======  ???AAA ||             ||                || ??A?AA || ?A??AA  ||  ??AA?A  || ?AA??A   || ?A?A?A
-          // AAA??A ||            ||             || AA?A?A ||AA??AA  ||               || A??AAA ||A?A?AA ======             ||             ||                ||               ||              ||  A?AA?A  ||               ||
+          // AAA??? || ?AA?AB ||              || AA?A?? || AA??A?  ||  A?AA?? || A??AA? || A?A?A? ======  ???AAA || BA?AA?  ||                || ??A?AA || ?A??AA  ||  ??AA?A  || ?AA??A   || ?A?A?A
+          // AAA??A ||?A?AAB ||             || AA?A?A ||AA??AA  ||               || A??AAA ||A?A?AA ======             ||   BAA?A?  ||                ||               ||              ||  A?AA?A  ||               ||
         } else if ((continue_element[0][ini] == 3 && continue_element[1][0] >= 2 ) ||  // AAA??A || AAA??B || AAA???
                    (continue_element[0][oth] == 1 && continue_element[1][ini] == 3 && continue_element[2][0] == 2) ||  // BAAA??
                    (continue_element[1][0] == 2 && continue_element[2][ini] == 3) ||  // A??AAA || B??AAA
@@ -1079,7 +1100,11 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
                    (continue_element[0][ini] == 1 && continue_element[1][0] == 1 && continue_element[2][ini] == 2 && continue_element[3][0] >= 1) ||  // A?AA??  || A?AA?A  || A?AA?B
                    (continue_element[1][0] == 1 && continue_element[2][ini] == 2 && continue_element[3][0] == 1 && continue_element[4][ini] == 1) ||  // B?AA?A
                    (continue_element[0][ini] == 1 && continue_element[1][0] == 1 && continue_element[2][ini] == 1 && continue_element[3][0] == 1 && continue_element[4][ini] >= 1) ||  // A?A?A? || A?A?AA || A?A?AB
-                   (continue_element[1][ini] == 1 && continue_element[2][0] == 1 && continue_element[3][ini] == 1 && continue_element[4][0] == 1 && continue_element[5][ini] == 1)  // ?A?A?A || BA?A?A
+                   (continue_element[1][ini] == 1 && continue_element[2][0] == 1 && continue_element[3][ini] == 1 && continue_element[4][0] == 1 && continue_element[5][ini] == 1) ||  // ?A?A?A || BA?A?A
+                   (continue_element[0][0] == 1 && continue_element[1][ini] == 2 && continue_element[2][0] == 1 && continue_element[3][ini] == 1) ||    // ?AA?AB
+                   (continue_element[0][0] == 1 && continue_element[1][ini] == 1 && continue_element[2][0] == 1 && continue_element[3][ini] == 2) ||   // ?A?AAB
+                   (continue_element[1][ini] == 1 && continue_element[2][0] == 1 && continue_element[3][ini] == 2 && continue_element[4][0] == 1 ) || // BA?AA?
+                   (continue_element[1][ini] == 2 && continue_element[2][0] == 1 && continue_element[3][ini] == 1 && continue_element[4][0] == 1)  // BAA?A?
                    ) {
           // 眠三(可以连成冲四）
           if (i == 0) {
@@ -1158,8 +1183,26 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
 // 估值函数(采用全局估值)
 int Game::calculateScore()
 {                                      //      ------连五------------|-----活4-------|------冲4_A----|-----冲4------|-----活3----|--眠3---|--活2--|眠2--|活1-|---------长连----------|
-  vector<int> black_weight = { 0,1000000,-10000000,50000,-110000, 500, -110000, 400, -100000, 400, -8000, 20, -50, 20, -50, 1, -3, 1,-3, 1000000, -10000000 };  // AI为黑子时对棋型的估值
-  vector<int> white_weight = { 0,10000000,-1000000,110000,-50000, 110000, -500, 100000, -400, 8000, -400, 50, -20, 50, -20, 3, -1, 3,-1, 10000000, -1000000 };  // AI为白子时对棋型的估值
+  vector<int> black_weight = { 0,1280000,-3840000,
+                               32000,-96000,  // 活4
+                               1000, -2600,  // 冲4_A
+                               800, -2400,  // 冲4
+                               800, -2400,  // 活3
+                               20, -60,  // 眠3
+                               20, -60,  // 活2
+                               1, -3,  // 眠2
+                               1,-3, // 活1
+                               1500000 -4000000 };  // AI为黑子时对棋型的估值
+  vector<int> white_weight = { 0,3840000,-1280000,
+                               96000,-32000,
+                               2600, -1000,
+                               2400, -800,
+                               2400, -800,
+                               60, -20,
+                               60, -20,
+                               3, -1,
+                               3,-1,
+                               1500000, -4000000 };  // AI为白子时对棋型的估值
   vector<int> weight;
   if (color_) {  // 黑方为AI
       weight = std::move(black_weight);
@@ -1204,10 +1247,6 @@ int Game::calculateScore()
             }
           // 判断棋局估值
           judgeChessTypeEva(continue_element, state[0]);  // 传递的是引用
-          slide.clear();
-          continue_element.clear();
-          vector<int>().swap(slide);  // 清空滑动窗口的内存
-          vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
         }
 
   // 垂直方向
@@ -1241,10 +1280,6 @@ int Game::calculateScore()
 
           // 判断棋局估值
           judgeChessTypeEva(continue_element, state[1]);  // 传递的是引用
-          slide.clear();
-          continue_element.clear();
-          vector<int>().swap(slide);  // 清空滑动窗口的内存
-          vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
         }
 
   // 正斜
@@ -1277,10 +1312,6 @@ int Game::calculateScore()
             }
           // 判断棋局估值
           judgeChessTypeEva(continue_element, state[2]);  // 传递的是引用
-          slide.clear();
-          continue_element.clear();
-          vector<int>().swap(slide);  // 清空滑动窗口的内存
-          vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
         }
 
   // 反斜
@@ -1313,10 +1344,6 @@ int Game::calculateScore()
             }
           // 判断棋局估值
           judgeChessTypeEva(continue_element, state[3]);  // 传递的是引用
-          slide.clear();
-          continue_element.clear();
-          vector<int>().swap(slide);  // 清空滑动窗口的内存
-          vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
         }
   int score = 0;  // 统计当前位置的估值
   for (int i = 1; i < 21; ++i) {
@@ -1341,7 +1368,36 @@ int Game::calculateScore()
 
 int Game::thread_calculateScore(int threadId)
 {
-    vector<int> weight = { 0,10000000,-1000000,110000,-50000, 110000, -1600, 100000, -400, 8000, -400, 50, -20, 50, -20, 3, -1, 3,-1, 10000000, -1000000 };  // 权重
+    vector<int> black_weight = { 0,1280000,-3840000,
+                                 32000,-96000,  // 活4
+                                 1000, -2600,  // 冲4_A
+                                 800, -2400,  // 冲4
+                                 800, -2400,  // 活3
+                                 20, -60,  // 眠3
+                                 20, -60,  // 活2
+                                 1, -3,  // 眠2
+                                 1,-3, // 活1
+                                 1500000 -4000000 };  // AI为黑子时对棋型的估值
+    vector<int> white_weight = { 0,3840000,-1280000,
+                                 96000,-32000,
+                                 2600, -1000,
+                                 2400, -800,
+                                 2400, -800,
+                                 60, -20,
+                                 60, -20,
+                                 3, -1,
+                                 3,-1,
+                                 1500000, -4000000 };  // AI为白子时对棋型的估值
+    vector<int> weight;
+    if (color_) {  // 黑方为AI
+        weight = std::move(black_weight);
+        white_weight.clear();
+        vector<int>().swap(white_weight);
+    } else {
+        weight = std::move(white_weight);
+        black_weight.clear();
+        vector<int>().swap(black_weight);
+    }
     vector<vector<int>>state(4, vector<int>(21, 0));  //统计4个方向上每种棋型的个数
     // 滑动窗口(每次处理一个六元组)
     // 对全局估值
@@ -1354,7 +1410,7 @@ int Game::thread_calculateScore(int threadId)
             // 棋型辨识数组
             vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数
             for (int i = 0; i < 6; ++i)
-                slide[i] = thread_chess_board_[threadId][row + i][col];
+            slide[i] = thread_chess_board_[threadId][row + i][col];
             int index = 0;  // 记录每组连续的元素
             // 从左到右统计滑动窗口中的连续数目
             for (int curr = 0; curr < (int)slide.size(); ++curr) {
@@ -1376,10 +1432,6 @@ int Game::thread_calculateScore(int threadId)
               }
             // 判断棋局估值
             judgeChessTypeEva(continue_element, state[0]);  // 传递的是引用
-            slide.clear();
-            continue_element.clear();
-            vector<int>().swap(slide);  // 清空滑动窗口的内存
-            vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
           }
 
     // 垂直方向
@@ -1390,7 +1442,7 @@ int Game::thread_calculateScore(int threadId)
             // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
             vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
             for (int i = 0; i < 6; ++i)
-                slide[i] = thread_chess_board_[threadId][row][col + i];
+            slide[i] = thread_chess_board_[threadId][row][col + i];
             int index = 0;  // 记录每组连续的元素
             // 从左到右统计滑动窗口中的连续数目
             for (int curr = 0; curr < (int)slide.size(); ++curr) {
@@ -1413,10 +1465,6 @@ int Game::thread_calculateScore(int threadId)
 
             // 判断棋局估值
             judgeChessTypeEva(continue_element, state[1]);  // 传递的是引用
-            slide.clear();
-            continue_element.clear();
-            vector<int>().swap(slide);  // 清空滑动窗口的内存
-            vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
           }
 
     // 正斜
@@ -1449,10 +1497,6 @@ int Game::thread_calculateScore(int threadId)
               }
             // 判断棋局估值
             judgeChessTypeEva(continue_element, state[2]);  // 传递的是引用
-            slide.clear();
-            continue_element.clear();
-            vector<int>().swap(slide);  // 清空滑动窗口的内存
-            vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
           }
 
     // 反斜
@@ -1485,10 +1529,6 @@ int Game::thread_calculateScore(int threadId)
               }
             // 判断棋局估值
             judgeChessTypeEva(continue_element, state[3]);  // 传递的是引用
-            slide.clear();
-            continue_element.clear();
-            vector<int>().swap(slide);  // 清空滑动窗口的内存
-            vector<vector<int>>().swap(continue_element);  // 清空容器并最小化它的容量
           }
     int score = 0;  // 统计当前位置的估值
     for (int i = 1; i < 21; ++i) {
@@ -1519,12 +1559,6 @@ void Game::startGame(GameType t)
   vector<vector<int>>().swap(chess_board_);  // 清空棋盘，防止clear()之后内存的泄露
   number_.clear();
   vector<vector<int>>().swap(number_);  // 清空number数组，防止clear()之后内存的泄露
-#if 0
-  thread_chess_board_.clear();
-  vector<vector<vector<int>>>().swap(thread_chess_board_);  // 清空线程棋盘
-  thread_sort_heap.clear();
-  vector<vector<vector<int>>>().swap(thread_sort_heap);  // 清空优先队列中的数据
-#endif
   num_ = 0;  // 重新初始化
   pointNum = 0;
   for (int i = 0; i <= kGridNum; i++)
