@@ -78,7 +78,7 @@ class Game
   vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
   int chess_y_ = -1;
-  int depth_ = 2;                                 // 搜索树深度
+  int depth_ = 8;                                 // 搜索树深度
   int kill_depth_ = 8;
   Result result_;                                 // 判断是否存在必胜棋
   Prohibit prohibit_;                            // 判断禁手
@@ -86,7 +86,7 @@ class Game
   QString prompt_text_;                 // 执行方的提示文本
   mutex m_mutex_;                          // 自旋锁
   int thread_num_ = 8;                     // 线程数
-  int multi_ = 10;                               // 博弈树宽度 = multi * thread_num_
+  int multi_ = 1;                               // 博弈树宽度 = multi * thread_num_
   bool color_;                                     // 判断哪边是电脑, 黑方是AI为true, 白方是AI为false
   int counts = 0;                                // 处理个数
   int alpha_;                   // 最大下限

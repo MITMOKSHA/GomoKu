@@ -571,105 +571,104 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
     // 防止对同一个位置重复估值，只针对本次，结束时销毁
     vector<vector<bool>> marked(kGridNum, vector<bool>(kGridNum, false));  // 添加标记（初始化都为未标记）
     int val = 0;
-    int extension = 2;  // 延长的深度
+    int extension = 1;  // 延长的深度
     // 对非空点的八个方向延申extension个深度
-    for (int row = 0; row < kGridNum; ++row)
-      for (int col = 0; col < kGridNum; ++col) {
-          if (thread_chess_board_[threadId][row][col] != 0) { // 若为非空点
-              for (int i =  row - extension; i <= row + extension; ++i)  // 平行
-                {
-                  if (i >= 0 && i < kGridNum &&  // 判断是否越界
-                      thread_chess_board_[threadId][i][col] == 0 &&  // 空位(才能进行回溯生成走法)
-                      marked[i][col] == false // 且没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][i][col] = -1;
-                      val = thread_calculateScore(threadId);   // 当前坐标点估值
-                      if (flag < max_flag) {
-                          heap.push(vector<int>{val, i, col});  // 向大顶堆中添加元素
-                          marked[i][col] = true;
-                          ++flag;  // 记录走法生成器中的点的个数
-                        } else {
-                          if (val < heap.top()[0]) {
-                              heap.pop();
-                              heap.push(vector<int>{val, i, col});
-                              marked[i][col] = true;
-                            }
-                        }
-                      thread_chess_board_[threadId][i][col] = 0;
+    for (auto i : trace_) {                          // 遍历走过的点
+        int row = i.first;
+        int col = i.second;
+        for (int i =  row - extension; i <= row + extension; ++i)  // 平行
+        {
+            if (i >= 0 && i < kGridNum &&  // 判断是否越界
+                    thread_chess_board_[threadId][i][col] == 0 &&  // 空位(才能进行回溯生成走法)
+                    marked[i][col] == false // 且没有被估值过
+                    ) {
+                thread_chess_board_[threadId][i][col] = -1;
+                val = thread_calculateScore(threadId);   // 当前坐标点估值
+                if (flag < max_flag) {
+                    heap.push(vector<int>{val, i, col});  // 向大顶堆中添加元素
+                    marked[i][col] = true;
+                    ++flag;  // 记录走法生成器中的点的个数
+                } else {
+                    if (val < heap.top()[0]) {
+                        heap.pop();
+                        heap.push(vector<int>{val, i, col});
+                        marked[i][col] = true;
                     }
                 }
-              for (int i = col - extension; i <= col + extension; ++i) {  // 垂直
-                  if (i >= 0 && i < kGridNum &&
-                      thread_chess_board_[threadId][row][i] == 0 &&
-                      marked[row][i] == false // 没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][row][i] = -1;
-                      val = thread_calculateScore(threadId);
-                      if (flag < max_flag) {  // 选10个
-                          heap.push(vector<int>{val, row, i});
-                           marked[row][i] = true;  // 标记
-                          ++flag;
-                        } else {
-                          if (val < heap.top()[0]) {  // 若估值元素小于大顶堆元素
-                              heap.pop();  // 删除堆顶元素
-                              heap.push(vector<int>{val, row, i});  // 插入该值
-                               marked[row][i] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][row][i] = 0;  // 回溯
-                    }
-                }
-              for (int i = row - extension, j = col - extension; i <= row + extension && j <= col + extension; ++i, ++j) {  // 正斜
-                  if (i >= 0 && i < kGridNum &&
-                      j >= 0 && j < kGridNum &&
-                      thread_chess_board_[threadId][i][j] == 0 &&
-                      marked[i][j] == false // 没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][i][j] = -1;
-                      val = thread_calculateScore(threadId);
-                      if (flag < max_flag) {
-                          heap.push(vector<int>{val, i, j});
-                          marked[i][j] = true;  // 标记
-                          ++flag;
-                        } else {
-                          if (val < heap.top()[0]) {  // 若估值元素小于大顶堆元素
-                              heap.pop();  // 删除堆顶元素
-                              heap.push(vector<int>{val, i, j});  // 插入该值
-                              marked[i][j] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][i][j] = 0;  // 回溯
-                    }
-                }
-              for (int i = row - extension, j = col + extension; i <= row + extension && j >= col - extension; i++, j--) {  // 反斜
-                  if (i >= 0 && i < kGridNum &&
-                      j >= 0 && j < kGridNum &&
-                      thread_chess_board_[threadId][i][j] == 0 &&
-                      marked[i][j] == false // 没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][i][j] = -1;
-                      val = thread_calculateScore(threadId);
-                      if (flag < max_flag) {
-                          heap.push(vector<int>{val, i, j});
-                          marked[i][j] = true;  // 标记
-                          ++flag;
-                        } else {
-                          if (val < heap.top()[0]) {  // 若估值元素小于大顶堆元素
-                              heap.pop();  // 删除堆顶元素
-                              heap.push(vector<int>{val, i, j});  // 插入该值
-                              marked[i][j] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][i][j] = 0;  // 回溯
-                    }
-                }
+                thread_chess_board_[threadId][i][col] = 0;
             }
         }
+        for (int i = col - extension; i <= col + extension; ++i) {  // 垂直
+            if (i >= 0 && i < kGridNum &&
+                    thread_chess_board_[threadId][row][i] == 0 &&
+                    marked[row][i] == false // 没有被估值过
+                    ) {
+                thread_chess_board_[threadId][row][i] = -1;
+                val = thread_calculateScore(threadId);
+                if (flag < max_flag) {  // 选10个
+                    heap.push(vector<int>{val, row, i});
+                    marked[row][i] = true;  // 标记
+                    ++flag;
+                } else {
+                    if (val < heap.top()[0]) {  // 若估值元素小于大顶堆元素
+                        heap.pop();  // 删除堆顶元素
+                        heap.push(vector<int>{val, row, i});  // 插入该值
+                        marked[row][i] = true;  // 标记
+                    }
+                }
+                thread_chess_board_[threadId][row][i] = 0;  // 回溯
+            }
+        }
+        for (int i = row - extension, j = col - extension; i <= row + extension && j <= col + extension; ++i, ++j) {  // 正斜
+            if (i >= 0 && i < kGridNum &&
+                    j >= 0 && j < kGridNum &&
+                    thread_chess_board_[threadId][i][j] == 0 &&
+                    marked[i][j] == false // 没有被估值过
+                    ) {
+                thread_chess_board_[threadId][i][j] = -1;
+                val = thread_calculateScore(threadId);
+                if (flag < max_flag) {
+                    heap.push(vector<int>{val, i, j});
+                    marked[i][j] = true;  // 标记
+                    ++flag;
+                } else {
+                    if (val < heap.top()[0]) {  // 若估值元素小于大顶堆元素
+                        heap.pop();  // 删除堆顶元素
+                        heap.push(vector<int>{val, i, j});  // 插入该值
+                        marked[i][j] = true;  // 标记
+                    }
+                }
+                thread_chess_board_[threadId][i][j] = 0;  // 回溯
+            }
+        }
+        for (int i = row - extension, j = col + extension; i <= row + extension && j >= col - extension; i++, j--) {  // 反斜
+            if (i >= 0 && i < kGridNum &&
+                    j >= 0 && j < kGridNum &&
+                    thread_chess_board_[threadId][i][j] == 0 &&
+                    marked[i][j] == false // 没有被估值过
+                    ) {
+                thread_chess_board_[threadId][i][j] = -1;
+                val = thread_calculateScore(threadId);
+                if (flag < max_flag) {
+                    heap.push(vector<int>{val, i, j});
+                    marked[i][j] = true;  // 标记
+                    ++flag;
+                } else {
+                    if (val < heap.top()[0]) {  // 若估值元素小于大顶堆元素
+                        heap.pop();  // 删除堆顶元素
+                        heap.push(vector<int>{val, i, j});  // 插入该值
+                        marked[i][j] = true;  // 标记
+                    }
+                }
+                thread_chess_board_[threadId][i][j] = 0;  // 回溯
+            }
+        }
+    }
     for (int i = 0; i < flag; ++i)  // 此时顺序为从大到小
-      {
+    {
         thread_sort_heap.push_back(heap.top());  // 放入数组中
         heap.pop();
-      }
+    }
 }
 
 void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, greater<vector<int>>>& heap, int& flag, int max_flag, int threadId, vector<vector<int>>& thread_sort_heap)
@@ -677,102 +676,101 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
     // 防止对同一个位置重复估值，只针对本次，结束时销毁
     vector<vector<bool>> marked(kGridNum, vector<bool>(kGridNum, false));  // 添加标记（初始化都为未标记）
     int val = 0;  // 估值
-    int extension = 2;  // 延长的深度TODO
+    int extension = 1;  // 延长的深度TODO
     // 对非空点的八个方向延申extension个深度
-    for (int row = 0; row < kGridNum; ++row)
-      for (int col = 0; col < kGridNum; ++col) {
-          if (thread_chess_board_[threadId][row][col] != 0) { // 若为非空点
-              for (int i =  row - extension; i <= row + extension; ++i)  // 平行
-                {
-                  if (i >= 0 && i < kGridNum &&
-                      thread_chess_board_[threadId][i][col] == 0 &&  // 空位(才能进行回溯生成走法)
-                      marked[i][col] == false // 且没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][i][col] = 1;
-                      val = thread_calculateScore(threadId);  // 存储估值
-                      if (flag < max_flag) {  // 维护max_flag走法
-                          heap.push(vector<int>{val, i, col});  // 向小顶堆中添加元素
-                          marked[i][col] = true;  // 标记
-                          ++flag;  // 记录走法生成器中的点的个数
-                        } else {
-                          if (val > heap.top()[0]) {
-                              heap.pop();
-                              heap.push(vector<int>{val, i, col});
-                              marked[i][col] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][i][col] = 0;
+    for (auto i : trace_) {                          // 遍历走过的点
+        int row = i.first;
+        int col = i.second;
+        for (int i =  row - extension; i <= row + extension; ++i)  // 平行
+        {
+            if (i >= 0 && i < kGridNum &&
+                    thread_chess_board_[threadId][i][col] == 0 &&  // 空位(才能进行回溯生成走法)
+                    marked[i][col] == false // 且没有被估值过
+                    ) {
+                thread_chess_board_[threadId][i][col] = 1;
+                val = thread_calculateScore(threadId);  // 存储估值
+                if (flag < max_flag) {  // 维护max_flag走法
+                    heap.push(vector<int>{val, i, col});  // 向小顶堆中添加元素
+                    marked[i][col] = true;  // 标记
+                    ++flag;  // 记录走法生成器中的点的个数
+                } else {
+                    if (val > heap.top()[0]) {
+                        heap.pop();
+                        heap.push(vector<int>{val, i, col});
+                        marked[i][col] = true;  // 标记
                     }
                 }
-              for (int i = col - extension; i <= col + extension; ++i) {  // 垂直
-                  if (i >= 0 && i < kGridNum &&
-                      thread_chess_board_[threadId][row][i] == 0 &&
-                      marked[row][i] == false // 没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][row][i] = 1;
-                      val = thread_calculateScore(threadId);
-                      if (flag < max_flag) {  // 选max_flag个
-                          heap.push(vector<int>{val, row, i});
-                          marked[row][i] = true;  // 标记
-                          ++flag;
-                        } else {
-                          if (val > heap.top()[0]) {  // 若估值元素大于小顶堆元素
-                              heap.pop();  // 删除堆顶元素
-                              heap.push(vector<int>{val, row, i});  // 插入该值
-                              marked[row][i] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][row][i] = 0;  // 回溯
-                    }
-                }
-              for (int i = row - extension, j = col - extension; i <= row + extension && j <= col + extension; ++i, ++j) {  // 正斜
-                  if (i >= 0 && i < kGridNum &&
-                      j >= 0 && j < kGridNum &&
-                      thread_chess_board_[threadId][i][j] == 0 &&
-                      marked[i][j] == false // 没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][i][j] = 1;
-                      val = thread_calculateScore(threadId);
-                      if (flag < max_flag) {
-                          heap.push(vector<int>{val, i, j});
-                          marked[i][j] = true;  // 标记
-                          ++flag;
-                        } else {
-                          if (val > heap.top()[0]) {  // 若估值元素大于小顶堆元素
-                              heap.pop();  // 删除堆顶元素
-                              heap.push(vector<int>{val, i, j});  // 插入该值
-                              marked[i][j] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][i][j] = 0;  // 回溯
-                    }
-                }
-              for (int i = row - extension, j = col + extension; i <= row + extension && j >= col - extension; i++, j--) {  // 反斜
-                  if (i >= 0 && i < kGridNum &&
-                      j >= 0 && j < kGridNum &&
-                      thread_chess_board_[threadId][i][j] == 0 &&
-                      marked[i][j] == false // 没有被估值过
-                      ) {
-                      thread_chess_board_[threadId][i][j] = 1;
-                      val = thread_calculateScore(threadId);
-                      if (flag < max_flag) {
-                          heap.push(vector<int>{val, i, j});
-                          marked[i][j] = true;  // 标记
-                          ++flag;
-                        } else {
-                          if (val > heap.top()[0]) {  // 若估值元素小于大顶堆元素
-                              heap.pop();  // 删除堆顶元素
-                              heap.push(vector<int>{val, i, j});  // 插入该值
-                              marked[i][j] = true;  // 标记
-                            }
-                        }
-                      thread_chess_board_[threadId][i][j] = 0;  // 回溯
-                    }
-                }
+                thread_chess_board_[threadId][i][col] = 0;
             }
         }
+        for (int i = col - extension; i <= col + extension; ++i) {  // 垂直
+            if (i >= 0 && i < kGridNum &&
+                    thread_chess_board_[threadId][row][i] == 0 &&
+                    marked[row][i] == false // 没有被估值过
+                    ) {
+                thread_chess_board_[threadId][row][i] = 1;
+                val = thread_calculateScore(threadId);
+                if (flag < max_flag) {  // 选max_flag个
+                    heap.push(vector<int>{val, row, i});
+                    marked[row][i] = true;  // 标记
+                    ++flag;
+                } else {
+                    if (val > heap.top()[0]) {  // 若估值元素大于小顶堆元素
+                        heap.pop();  // 删除堆顶元素
+                        heap.push(vector<int>{val, row, i});  // 插入该值
+                        marked[row][i] = true;  // 标记
+                    }
+                }
+                thread_chess_board_[threadId][row][i] = 0;  // 回溯
+            }
+        }
+        for (int i = row - extension, j = col - extension; i <= row + extension && j <= col + extension; ++i, ++j) {  // 正斜
+            if (i >= 0 && i < kGridNum &&
+                    j >= 0 && j < kGridNum &&
+                    thread_chess_board_[threadId][i][j] == 0 &&
+                    marked[i][j] == false // 没有被估值过
+                    ) {
+                thread_chess_board_[threadId][i][j] = 1;
+                val = thread_calculateScore(threadId);
+                if (flag < max_flag) {
+                    heap.push(vector<int>{val, i, j});
+                    marked[i][j] = true;  // 标记
+                    ++flag;
+                } else {
+                    if (val > heap.top()[0]) {  // 若估值元素大于小顶堆元素
+                        heap.pop();  // 删除堆顶元素
+                        heap.push(vector<int>{val, i, j});  // 插入该值
+                        marked[i][j] = true;  // 标记
+                    }
+                }
+                thread_chess_board_[threadId][i][j] = 0;  // 回溯
+            }
+        }
+        for (int i = row - extension, j = col + extension; i <= row + extension && j >= col - extension; i++, j--) {  // 反斜
+            if (i >= 0 && i < kGridNum &&
+                    j >= 0 && j < kGridNum &&
+                    thread_chess_board_[threadId][i][j] == 0 &&
+                    marked[i][j] == false // 没有被估值过
+                    ) {
+                thread_chess_board_[threadId][i][j] = 1;
+                val = thread_calculateScore(threadId);
+                if (flag < max_flag) {
+                    heap.push(vector<int>{val, i, j});
+                    marked[i][j] = true;  // 标记
+                    ++flag;
+                } else {
+                    if (val > heap.top()[0]) {  // 若估值元素小于大顶堆元素
+                        heap.pop();  // 删除堆顶元素
+                        heap.push(vector<int>{val, i, j});  // 插入该值
+                        marked[i][j] = true;  // 标记
+                    }
+                }
+                thread_chess_board_[threadId][i][j] = 0;  // 回溯
+            }
+        }
+    }
     for (int i = 0; i < flag; ++i)  // 此时顺序为从小到大（需要调整）
-      {
+    {
         thread_sort_heap.push_back(heap.top());
         heap.pop();
     }
@@ -842,7 +840,7 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
         priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
         vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        threadMinHeap(heap, flag, multi_, threadIndex, thread_sort_heap);
+        threadMinHeap(heap, flag, thread_num_*multi_, threadIndex, thread_sort_heap);
         for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由大到小遍历，提高剪枝效率
         {
             counts++;
@@ -868,10 +866,9 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
         priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
         vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        threadMaxHeap(heap, flag, multi_, threadIndex,thread_sort_heap);
+        threadMaxHeap(heap, flag, thread_num_ * multi_, threadIndex,thread_sort_heap);
         for (int i = flag - 1; i >= 0; --i)  // 当前层点估值由小到大遍历，提高剪枝效率
         {
-            qDebug() << "threadID:" << threadIndex << "double" << i;
             counts++;
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
@@ -899,7 +896,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
         priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>> heap;  // 建立小顶堆
         vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        threadMinHeap(heap, flag, thread_num_*multi_, threadIndex, thread_sort_heap);
+        threadMinHeap(heap, flag, thread_num_*multi_ , threadIndex, thread_sort_heap);
 //        qDebug() << "threadID:" << threadIndex << "nodeNum" << flag;
         for (int i = flag * threadIndex / thread_num_; i < flag * (threadIndex+1) / thread_num_; ++i)
         {
@@ -927,7 +924,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
         priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>> heap;  // 建立大顶堆
         vector<vector<int>> thread_sort_heap;      // 存储排序后估值较好的点
         int flag = 0;  // 标记记录最佳估值的个数
-        threadMaxHeap(heap, flag, thread_num_*multi_, threadIndex,thread_sort_heap);
+        threadMaxHeap(heap, flag, thread_num_*multi_ , threadIndex,thread_sort_heap);
         for (int i = flag * threadIndex / thread_num_; i < flag * (threadIndex+1) / thread_num_; ++i)
         {
             counts++;
@@ -1183,26 +1180,26 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
 // 估值函数(采用全局估值)
 int Game::calculateScore()
 {                                      //      ------连五------------|-----活4-------|------冲4_A----|-----冲4------|-----活3----|--眠3---|--活2--|眠2--|活1-|---------长连----------|
-  vector<int> black_weight = { 0,1280000,-3840000,
-                               32000,-96000,  // 活4
-                               1000, -2600,  // 冲4_A
-                               800, -2400,  // 冲4
-                               800, -2400,  // 活3
-                               20, -60,  // 眠3
-                               20, -60,  // 活2
+  vector<int> black_weight = { 0,1000000,-10000000,
+                               50000,-110000,  // 活4
+                               500, -110000,  // 冲4_A
+                               400, -100000,  // 冲4
+                               400, -8000,  // 活3
+                               20, -50,  // 眠3
+                               20, -50,  // 活2
                                1, -3,  // 眠2
                                1,-3, // 活1
                                1500000 -4000000 };  // AI为黑子时对棋型的估值
-  vector<int> white_weight = { 0,3840000,-1280000,
-                               96000,-32000,
-                               2600, -1000,
-                               2400, -800,
-                               2400, -800,
-                               60, -20,
-                               60, -20,
+  vector<int> white_weight = { 0,10000000,-1000000,
+                               110000,-50000,
+                               110000, -500,
+                               100000, -400,
+                               8000, -400,
+                               50, -20,
+                               50, -20,
                                3, -1,
                                3,-1,
-                               1500000, -4000000 };  // AI为白子时对棋型的估值
+                               1000000, -10000000};  // AI为白子时对棋型的估值
   vector<int> weight;
   if (color_) {  // 黑方为AI
       weight = std::move(black_weight);
@@ -1356,11 +1353,11 @@ int Game::calculateScore()
       else if (i == 7) stat_[7] = count;  // 冲四
       else if (i == 9) stat_[9] = count; // 活三
     }
-  state.clear();
-  vector<vector<int>>().swap(state);   // 清空栈上空间
   result_ = Result::R_DRAW;  // 正常行棋
   // 判断禁手，只针对黑棋
-  // judgeProhibit(state);
+   judgeProhibit(state);
+   state.clear();
+   vector<vector<int>>().swap(state);   // 清空栈上空间
   if (stat_[1] > 0) result_ = Result::R_BLACK;
   else if (stat_[2] > 0) result_ = Result::R_WHITE;
   return score;
@@ -1368,26 +1365,26 @@ int Game::calculateScore()
 
 int Game::thread_calculateScore(int threadId)
 {
-    vector<int> black_weight = { 0,1280000,-3840000,
-                                 32000,-96000,  // 活4
-                                 1000, -2600,  // 冲4_A
-                                 800, -2400,  // 冲4
-                                 800, -2400,  // 活3
-                                 20, -60,  // 眠3
-                                 20, -60,  // 活2
+    vector<int> black_weight = { 0,1000000,-10000000,
+                                 50000,-110000,  // 活4
+                                 500, -110000,  // 冲4_A
+                                 400, -100000,  // 冲4
+                                 400, -8000,  // 活3
+                                 20, -50,  // 眠3
+                                 20, -50,  // 活2
                                  1, -3,  // 眠2
                                  1,-3, // 活1
                                  1500000 -4000000 };  // AI为黑子时对棋型的估值
-    vector<int> white_weight = { 0,3840000,-1280000,
-                                 96000,-32000,
-                                 2600, -1000,
-                                 2400, -800,
-                                 2400, -800,
-                                 60, -20,
-                                 60, -20,
+    vector<int> white_weight = { 0,10000000,-1000000,
+                                 110000,-50000,
+                                 110000, -500,
+                                 100000, -400,
+                                 8000, -400,
+                                 50, -20,
+                                 50, -20,
                                  3, -1,
                                  3,-1,
-                                 1500000, -4000000 };  // AI为白子时对棋型的估值
+                                 1000000, -10000000};  // AI为白子时对棋型的估值
     vector<int> weight;
     if (color_) {  // 黑方为AI
         weight = std::move(black_weight);
@@ -1544,8 +1541,8 @@ int Game::thread_calculateScore(int threadId)
     state.clear();
     vector<vector<int>>().swap(state);   // 清空栈上空间
     result_ = Result::R_DRAW;  // 正常行棋
-    // 判断禁手，只针对黑棋
-    // judgeProhibit(state);
+     // 判断禁手，只针对黑棋
+//     judgeProhibit(state);
     if (stat_[1] > 0) result_ = Result::R_BLACK;
     else if (stat_[2] > 0) result_ = Result::R_WHITE;
     return score;
@@ -1555,6 +1552,8 @@ void Game::startGame(GameType t)
 {
   battle_type_ = t;  // 将传递的GameType赋给枚举类型对象，作为当前运行模式
   // 初始棋盘
+  trace_.clear();
+  vector<pair<int, int>>().swap(trace_);  // 清空棋盘，防止clear()之后内存的泄露
   chess_board_.clear();
   vector<vector<int>>().swap(chess_board_);  // 清空棋盘，防止clear()之后内存的泄露
   number_.clear();

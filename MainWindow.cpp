@@ -60,7 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
       qDebug() << "saved";
   });
   connect(repent, &QAction::triggered, this, &MainWindow::repentance);
-//  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
   connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);  // 开局选择先后手
   initGame(PERSON);  // 默认为PVP开局
 }
@@ -158,6 +158,9 @@ void MainWindow::initiativeDialog()  // 先手对话框
         game_->number_[7][6] = ++game_->num_;
         game_->chess_board_[9][5] = 1;
         game_->number_[9][5] = ++game_->num_;
+        game_->trace_.push_back(make_pair(7, 7));
+        game_->trace_.push_back(make_pair(7, 6));
+        game_->trace_.push_back(make_pair(9, 5));
         game_->player_flag_ = !game_->player_flag_;
         game_->pointNum = 3;  // 针对疏星局选择的打点个数为3
         startPointAI();  // 提示AI打点个数的对话框
