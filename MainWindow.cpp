@@ -17,7 +17,10 @@
 #include <QLabel>
 #include <QAbstractButton>
 #include <QInputDialog>
-#include <QThread>
+#include <QFile>
+#include <QFileDialog>
+#include <QString>
+#include <unordered_map>
 
 #define CHESS_ONE_SOUND ":/res/sound/chessone.wav"  // 声音文件
 #define WIN_SOUND ":/res/sound/win.wav"
@@ -32,50 +35,62 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);  // 提示下棋方
   // 对容器进行初始化
 
-  setWindowTitle("五子棋");
+  setWindowTitle("Moksha");
   setFixedSize(900, 900);  // 设置窗口固定大小
   grid_x_ = height() / 20;
   grid_y_ = width() / 20;
   start_x_ = 3 * grid_x_;
   start_y_ = 3 * grid_y_;
 
+  // 设置Label样式
+  ui->label_white_time->setStyleSheet("color:rgb(255, 255, 255)");
+  ui->label_black->setFont(QFont("Microsoft JhengHei UI", 17, 65));
+  ui->label_white->setFont(QFont("Microsoft JhengHei UI", 17, 65));
+
   // 时钟计时
-  black_timer_ = new QTimer(this);         // 创建定时器
+  black_timer_ = new QTimer(this);                                                                    // 创建定时器
   white_timer_ = new QTimer(this);
-  connect(black_timer_, &QTimer::timeout, this, [&]() {                       //  超出1s, 则执行该函数改变时钟的时间
+  connect(black_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
       black_show_time_ = black_show_time_.addMSecs(-500);
-      ui->label_black_time->setText(black_show_time_.toString("mm:ss"));    // 不断更新时钟当前的时间
+      ui->label_black_time->setText(black_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
   });
-  connect(white_timer_, &QTimer::timeout, this, [&]() {                       //  超出1s, 则执行该函数改变时钟的时间
+  connect(white_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
       white_show_time_ = white_show_time_.addMSecs(-500);
-      ui->label_white_time->setText(white_show_time_.toString("mm:ss"));    // 不断更新时钟当前的时间
+      ui->label_white_time->setText(white_show_time_.toString("mm:ss"));       // 不断更新时钟当前的时间
   });
   // 设置菜单栏及其选项
-  QMenu* menu = menuBar()->addMenu(tr("游戏模式"));
+  QMenu* menu = menuBar()->addMenu(tr("Mode"));
   QAction* actionPVP = new QAction("玩家对战", this);
   QAction* actionPVB = new QAction("人机对战", this);
 
   // 设置菜单栏及其选项
-  QMenu* menu_func = menuBar()->addMenu(tr("功能"));
+  QMenu* menu_func = menuBar()->addMenu(tr("Function"));
   QAction* save_chess_game = new QAction("保存棋局", this);
+  QAction* chess_manual = new QAction("生成棋谱", this);
   QAction* repent = new QAction("悔棋", this);
 
   // 给菜单栏添加选项
   menu->addAction(actionPVP);
   menu->addAction(actionPVB);
   menu_func->addAction(save_chess_game);
+  menu_func->addAction(chess_manual);
   menu_func->addAction(repent);
   // 菜单栏的信号与槽
-  connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);  // 人人对战
-  connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);  // 人机对战
-  connect(save_chess_game, &QAction::triggered, this, [this](){   // 保存当前棋局, 保存至当前电脑的桌面
+
+  connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);                                                                                         // 人人对战
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);                                                                                        // 人机对战
+  connect(save_chess_game, &QAction::triggered, this, [this](){                                                                                                             // 保存当前棋局, 保存至当前电脑的桌面
       QPixmap pixMap_ = QWidget::grab();
-      pixMap_.save("C:/Users/49013/Desktop/savedchessGame/chessGame.png", "PNG");
-      qDebug() << "saved";
+      QString path = QFileDialog::getSaveFileName(this, "savedchessGame", "C:/Users/49013/Desktop/savedchessGame/", "*.png");   // 保存文件路径对话框
+      if (!path.isEmpty()) {
+          pixMap_.save(path, "PNG");
+          qDebug() << "saved";
+      }
   });
-  connect(repent, &QAction::triggered, this, &MainWindow::repentance);
-  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);  // 打印队伍名对话框
-  connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);  // 开局选择先后手
+  connect(repent, &QAction::triggered, this, &MainWindow::repentance);                                                                                             // 悔棋
+  connect(chess_manual, &QAction::triggered, this, &MainWindow::generateChessManual);                                                                 // 打印棋谱
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);                                                                      // 打印队伍名对话框
+  connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);                                                                                 // 开局选择先后手
   initGame(PERSON);  // 默认为PVP开局
 }
 
@@ -102,8 +117,8 @@ void MainWindow::PVPinitGame()
 {
   game_->startGame(PERSON);
   game_->running_status_ = PLAYING;
-  black_show_time_ = QTime(0, 15, 0);     // 十五分钟倒计时
-  white_show_time_ = QTime(0, 15, 0);
+  black_show_time_.setHMS(0, 15, 0);     // 十五分钟倒计时
+  white_show_time_.setHMS(0, 15, 0);
   ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
   ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
   update();
@@ -113,8 +128,8 @@ void MainWindow::PVBinitGame()
 {
   game_->startGame(ROBOT);
   game_->running_status_ = PLAYING;
-  black_show_time_ = QTime(0, 15, 0);     // 十五分钟倒计时
-  white_show_time_ = QTime(0, 15, 0);
+  black_show_time_.setHMS(0, 15, 0);     // 十五分钟倒计时
+  white_show_time_.setHMS(0, 15, 0);
   ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
   ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
   digit_ = 0;
@@ -164,8 +179,9 @@ void MainWindow::initiativeDialog()  // 先手对话框
   switch (ret) {
     case QMessageBox::No: {
         game_->color_ = false;
-        ui->label_black->setText("黑方用户:" + text);
+        ui->label_black->setText("黑方用户:" + text_);
         ui->label_white->setText("白方用户:计算机");
+        initial_name_ = text_;          // 更新先手队伍名，打印需要用
 //        initGame(game_->battle_type_); // 初始化棋盘
         pointDialog();  // 用户进行打点
       }
@@ -173,7 +189,8 @@ void MainWindow::initiativeDialog()  // 先手对话框
     case QMessageBox::Ok: {
         game_->color_ = true;
         ui->label_black->setText("黑方用户:计算机");
-        ui->label_white->setText("白方用户:" + text);
+        ui->label_white->setText("白方用户:" + text_);
+        initial_name_ = "计算机";         // 更新先手队伍名，打印需要用
         game_->chess_board_[7][7] = 1;
         game_->number_[7][7] = ++game_->num_;
         game_->chess_board_[7][6] = -1;
@@ -197,11 +214,11 @@ void MainWindow::initiativeDialog()  // 先手对话框
 void MainWindow::printTeamNameDialog()
 {
   bool ok;
-  text = QInputDialog::getText(this, tr("输入"),
+  text_ = QInputDialog::getText(this, tr("输入"),
                                        tr("请输入用户名:"), QLineEdit::Normal,
                                        nullptr, &ok);
-  if (ok && !text.isEmpty()) {
-      ui->label_black->setText("黑方用户:" + text);
+  if (ok && !text_.isEmpty()) {
+      ui->label_black->setText("黑方用户:" + text_);
       ui->label_white->setText("白方用户:计算机");
     }
     ui->label_vs->setText("VS");
@@ -388,7 +405,7 @@ void MainWindow::exchangeDialogPC()
         startPointPC();            // 开始打点
         pointing_ = true;  // 正在打点
         game_->color_ = !game_->color_;      // 交换执行棋
-        ui->label_black->setText("黑方用户:" + text);
+        ui->label_black->setText("黑方用户:" + text_);
         ui->label_white->setText("白方用户:计算机");
       }
       break;
@@ -411,7 +428,7 @@ void MainWindow::exchangeDialogAI()
       game_->run_procedure_ = DONE;  // 等同于先让玩家走子
       game_->color_ = !game_->color_;      // 交换执行棋
       ui->label_black->setText("黑方用户:计算机");
-      ui->label_white->setText("白方用户:" + text);
+      ui->label_white->setText("白方用户:" + text_);
     } else {  // 不可交换
       str = "不交换！";
     }
@@ -444,6 +461,84 @@ void MainWindow::repentance()
          game_->number_[sit_prev.first][sit_prev.second] = 0;
          game_->num_ -= 2;                                                                   // 回退两次计数
          update();                                                                                  // 最后再对棋盘进行一次更新
+}
+
+void MainWindow::generateChessManual()
+{
+//    if (game_->running_status_ != WIN) {        // 只有在游戏判定结束时才能打印棋谱
+//        return;
+//    }
+    QString path = QFileDialog::getSaveFileName(this, "chess_manual", "C:/Users/49013/Desktop/棋谱文件/", "*.txt");  // 保存文件的对话框
+    if (!path.isEmpty()) {
+        QFile file(path);
+        bool isok = file.open(QIODevice::WriteOnly);
+        if (isok)
+        {
+            // 打印样例: {[C5][先手参赛队 B][后手参赛队 W]
+            QString str = "{[C5][";
+            if (initial_name_ == "计算机") {           // 若为AI先手
+                str += "五子棋";          // 本方本次比赛的队伍名
+                if (game_->color_) {    // 若AI为黑子
+                    str += " B][";
+                    str += text_ + " W]";       // 对方输入的队伍名
+                } else {
+                    str += " W][";
+                    str += text_ + " B]";       // 对方输入的队伍名
+                }
+            } else {                                               // 若为对方先手
+                str += text_;
+                if (game_->color_) {
+                    str += " W][";
+                    str += "五子棋 B]";
+                } else {
+                    str += " B][";
+                    str += "五子棋 W]";
+                }
+            }
+            // 打印样例: [先手胜]
+            if (game_->num_ % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利)
+                qDebug() << ui->label_black->text().mid(5);  // 提取选手名称, mid类似substr
+                if (initial_name_ == ui->label_black->text().mid(5)) {  // 且为先手
+                    str += "[先手胜]";
+                } else {
+                    str += "[后手胜]";
+                }
+            } else {   // 决胜棋由白子下
+                if (initial_name_ == ui->label_white->text().mid(5)) {  // 且为先手
+                    str += "[先手胜]";
+                } else {
+                    str += "[后手胜]";
+                }
+            }
+            // 打印样例: [2017.07.29 14:00 重庆]
+            str += "[";
+            str += QDateTime::currentDateTime().toString("yyyy.MM.dd hh:mm");  // 获取当前时间(按时间格式输出)
+            str += " 重庆][2021 CCGC];";
+            // 打印样例: B(J,10)MARK[1];W(L,10);B(J,11);W(I,12);B(H,10);W(H,8);B(K,8)}
+            // 使用哈希表来映射坐标点对应棋盘谱中的位置
+            unordered_map<int, QString> row_assemble{{0, "A"}, {1, "B"}, {2, "C"}, {3, "D"}, {4, "E"}, {5, "F"}, {6, "G"}, {7, "H"}, {8, "I"}, {9, "J"}, {10, "K"}, {11, "L"}, {12, "M"}, {13, "N"}, {14, "O"}};   // 行坐标对应集合
+            unordered_map<int, QString> col_assemble{{0, "15"}, {1, "14"}, {2, "13"}, {3, "12"}, {4, "11"}, {5, "10"}, {6, "9"}, {7, "8"}, {8, "7"}, {9, "6"}, {10, "5"}, {11, "4"}, {12, "3"}, {13, "2"}, {14, "1"}};        // 列坐标对应集合
+            int output_count = 0;                        // 对打印的黑白字符进行变换
+            for (auto site : game_->trace_)  {     // 按从前到后的顺序遍历记录棋盘的数组
+                if (output_count++ % 2 == 0) {      // 黑子
+                    str += "B";
+                } else {
+                    str += "W";
+                }
+                // 提取横纵坐标并打印
+                int row = site.first;
+                int col = site.second;
+                // 打印横纵坐标对应的棋盘上的符号
+                qDebug() << row << " " << col;
+                str += "(" + row_assemble[row] + "," + col_assemble[col] + ");";
+            }
+            str.chop(1);   // 删除最后一个分号
+            str += "}";
+            file.write(str.toUtf8());              // 转化成utf8输出返回的时QbyteArray(参数要求类型), 输出(写入)到文件中
+        }
+        file.close();
+        qDebug() << "generated";    // 提示生成文本文档
+    }
 }
 
 void MainWindow::prohibitHandDialog()                 // TODO 禁手对话框提示
@@ -556,8 +651,9 @@ void MainWindow::paintEvent(QPaintEvent*)
           QSound::play(WIN_SOUND);  // 发出胜利的声音
           QString str;
           // 判断什么颜色的棋获胜
-          if (game_->chess_board_[game_->chess_x_][game_->chess_y_] == 1)
+          if (game_->chess_board_[game_->chess_x_][game_->chess_y_] == 1) {
             str = "黑棋";
+          }
           else if (game_->chess_board_[game_->chess_x_][game_->chess_y_] == -1)
             str = "白棋";
           // 对话框(提示哪一方赢了)
@@ -572,14 +668,6 @@ void MainWindow::paintEvent(QPaintEvent*)
       // 对话框提示死局
       deadDialog();
     }
-  // 开局打点之后就开始计时
-  if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->player_flag_ && game_->running_status_ != WIN) {   // 胜利时停止计时
-      black_timer_->start(500);
-      white_timer_->stop();
-  } else if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && !game_->player_flag_ && game_->running_status_ != WIN) {
-      white_timer_->start(500);
-      black_timer_->stop();
-  }
   painter.end();
 }
 
@@ -632,6 +720,13 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         QTimer::singleShot(kAIDelay, this,
                            [this]() {
               game_->actionByAI();  // AI走子
+              if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && !game_->player_flag_ && game_->running_status_ != WIN) {   // 胜利时停止计时
+                  white_timer_->start(500);
+                  black_timer_->stop();
+              } else if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->player_flag_ && game_->running_status_ != WIN) {
+                  black_timer_->start(500);
+                  white_timer_->stop();
+              }
               QSound::play(CHESS_ONE_SOUND);
               update();                                                                                  // 更新棋盘
               if (game_->number_[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点
@@ -680,4 +775,12 @@ void MainWindow::chessOneByPerson()
           }
      }
     }
+  // 开局打点之后就开始计时
+  if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->player_flag_ && game_->running_status_ != WIN) {   // 胜利时停止计时
+      black_timer_->start(500);
+      white_timer_->stop();
+  } else if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && !game_->player_flag_ && game_->running_status_ != WIN) {
+      white_timer_->start(500);
+      black_timer_->stop();
+  }
 }
