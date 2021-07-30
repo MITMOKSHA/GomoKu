@@ -11,11 +11,13 @@
 #include <QAction>
 #include <QRandomGenerator>  // 随机数引擎
 #include <QTimer>
+#include <QTime>
 #include <QBrush>
 #include <QFont>
 #include <QLabel>
 #include <QAbstractButton>
 #include <QInputDialog>
+#include <QThread>
 
 #define CHESS_ONE_SOUND ":/res/sound/chessone.wav"  // 声音文件
 #define WIN_SOUND ":/res/sound/win.wav"
@@ -29,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
   ui->setupUi(this);  // 提示下棋方
   // 对容器进行初始化
+
   setWindowTitle("五子棋");
   setFixedSize(900, 900);  // 设置窗口固定大小
   grid_x_ = height() / 20;
@@ -36,6 +39,17 @@ MainWindow::MainWindow(QWidget *parent)
   start_x_ = 3 * grid_x_;
   start_y_ = 3 * grid_y_;
 
+  // 时钟计时
+  black_timer_ = new QTimer(this);         // 创建定时器
+  white_timer_ = new QTimer(this);
+  connect(black_timer_, &QTimer::timeout, this, [&]() {                       //  超出1s, 则执行该函数改变时钟的时间
+      black_show_time_ = black_show_time_.addMSecs(-500);
+      ui->label_black_time->setText(black_show_time_.toString("mm:ss"));    // 不断更新时钟当前的时间
+  });
+  connect(white_timer_, &QTimer::timeout, this, [&]() {                       //  超出1s, 则执行该函数改变时钟的时间
+      white_show_time_ = white_show_time_.addMSecs(-500);
+      ui->label_white_time->setText(white_show_time_.toString("mm:ss"));    // 不断更新时钟当前的时间
+  });
   // 设置菜单栏及其选项
   QMenu* menu = menuBar()->addMenu(tr("游戏模式"));
   QAction* actionPVP = new QAction("玩家对战", this);
@@ -88,6 +102,10 @@ void MainWindow::PVPinitGame()
 {
   game_->startGame(PERSON);
   game_->running_status_ = PLAYING;
+  black_show_time_ = QTime(0, 15, 0);     // 十五分钟倒计时
+  white_show_time_ = QTime(0, 15, 0);
+  ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
+  ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
   update();
 }
 
@@ -95,6 +113,10 @@ void MainWindow::PVBinitGame()
 {
   game_->startGame(ROBOT);
   game_->running_status_ = PLAYING;
+  black_show_time_ = QTime(0, 15, 0);     // 十五分钟倒计时
+  white_show_time_ = QTime(0, 15, 0);
+  ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
+  ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
   digit_ = 0;
   update();
 }
@@ -144,7 +166,7 @@ void MainWindow::initiativeDialog()  // 先手对话框
         game_->color_ = false;
         ui->label_black->setText("黑方用户:" + text);
         ui->label_white->setText("白方用户:计算机");
-        initGame(game_->battle_type_); // 初始化棋盘
+//        initGame(game_->battle_type_); // 初始化棋盘
         pointDialog();  // 用户进行打点
       }
       break;
@@ -424,6 +446,11 @@ void MainWindow::repentance()
          update();                                                                                  // 最后再对棋盘进行一次更新
 }
 
+void MainWindow::prohibitHandDialog()                 // TODO 禁手对话框提示
+{
+
+}
+
 void MainWindow::paintEvent(QPaintEvent*)
 {
   QPainter painter;
@@ -453,7 +480,7 @@ void MainWindow::paintEvent(QPaintEvent*)
     }
 
   // 绘制字符
-  QFont font ("Microsoft YaHei", 17, 80, false);
+  QFont font ("Comic Sans MS", 17, 50, false);
   font.setCapitalization(QFont::QFont::AllUppercase);  // 设置为大写
   font.setLetterSpacing(QFont::AbsoluteSpacing, grid_x_ - font.pointSize() - pen.width() / 2 - 4);  // 设置字符间的间距
   painter.setFont(font);         // 使用字体
@@ -466,7 +493,6 @@ void MainWindow::paintEvent(QPaintEvent*)
     {
       painter.drawText(start_x_ - grid_x_ - font.pointSize() / 2 - 5, start_y_ + font.pointSize() / 2 + (15 - i) * grid_y_, QString::number(i));  // QString::number()将数字转化为字符串
     }
-
    // 绘制棋
   QFont chessFont("Microsoft YaHei", 17, 100, false);
   for (int i = 0; i < kGridNum; ++i)
@@ -525,6 +551,8 @@ void MainWindow::paintEvent(QPaintEvent*)
       if (game_->isWin(game_->chess_x_, game_->chess_y_) && game_->running_status_ == PLAYING)
         {
           game_->running_status_ = WIN;
+          black_timer_->stop();
+          white_timer_->stop();
           QSound::play(WIN_SOUND);  // 发出胜利的声音
           QString str;
           // 判断什么颜色的棋获胜
@@ -544,6 +572,14 @@ void MainWindow::paintEvent(QPaintEvent*)
       // 对话框提示死局
       deadDialog();
     }
+  // 开局打点之后就开始计时
+  if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->player_flag_ && game_->running_status_ != WIN) {   // 胜利时停止计时
+      black_timer_->start(500);
+      white_timer_->stop();
+  } else if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && !game_->player_flag_ && game_->running_status_ != WIN) {
+      white_timer_->start(500);
+      black_timer_->stop();
+  }
   painter.end();
 }
 
@@ -564,7 +600,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
     // 人下棋，并且不能抢机器的棋
     if  (game_->run_procedure_ == DONE) {  // 且没有在打点
           chessOneByPerson();
-          if (game_->number_[game_->chess_x_][game_->chess_y_] == 3) {  // AI选择是否交换的对话框
+          if (game_->number_[game_->chess_x_][game_->chess_y_] == 3 && game_->battle_type_ == ROBOT) {  // AI选择是否交换的对话框
               exchangeDialogAI();
             }
           if (game_->battle_type_ == ROBOT && game_->number_[game_->chess_x_][game_->chess_y_] == 4) {
@@ -587,7 +623,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
       }
     // 如果是人机模式，需要调用AI下棋
     if (game_->battle_type_ == ROBOT  && game_->run_procedure_ == CHESSING
-        && !game_->isDeadGame() &&  // 解决棋走完还下的问题
+        && !game_->isDeadGame() &&                                                       // 解决棋走完还下的问题
         !game_->isWin(game_->chess_x_, game_->chess_y_) &&
         game_->number_[game_->chess_x_][game_->chess_y_] >= 3 &&  // 指定开局黑方走三步
         !pointing_)  // 打点时AI不走子
@@ -597,7 +633,7 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
                            [this]() {
               game_->actionByAI();  // AI走子
               QSound::play(CHESS_ONE_SOUND);
-              update();  // 更新棋盘
+              update();                                                                                  // 更新棋盘
               if (game_->number_[game_->chess_x_][game_->chess_y_] == 4) {  // 针对第四步打点
                   startPointPC();
                   pointing_ = true;  // 正在打点

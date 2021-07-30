@@ -4,6 +4,8 @@
 #include "game.h"
 #include <QMainWindow>
 #include <QString>
+#include <QTimer>
+#include <QTime>
 
 
 QT_BEGIN_NAMESPACE
@@ -43,6 +45,7 @@ class MainWindow : public QMainWindow
   void exchangeDialogPC();              // 玩家决定是否换手对话框
   void exchangeDialogAI();             //  AI提示是否换手对话框
   void repentance();                        //  悔棋操作函数
+  void prohibitHandDialog();            // 禁手对话框提示
 
  private:
   Ui::MainWindow *ui;
@@ -57,5 +60,9 @@ class MainWindow : public QMainWindow
   bool pointing_ai_ = false;         // AI是否正在打点
   vector<pair<int, int>> record_;  // 记录用户打点子的坐标
   vector<pair<int, int>> ai_record_;          // 记录AI打点子的坐标
+  QTimer *black_timer_;                    // 比赛计时, 定时器
+  QTimer *white_timer_;
+  QTime black_show_time_;               // 计时显示
+  QTime white_show_time_;
 };
 #endif // MIANWINDOW_H_

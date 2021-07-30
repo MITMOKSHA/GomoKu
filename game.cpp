@@ -900,7 +900,6 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
 //        qDebug() << "threadID:" << threadIndex << "nodeNum" << flag;
         for (int i = flag * threadIndex / thread_num_; i < flag * (threadIndex+1) / thread_num_; ++i)
         {
-            qDebug() << "threadID:" << threadIndex << "i" << i;
             counts++;
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
@@ -913,7 +912,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
                 alpha_ = bestvalue;  // max层更新自己的下界
                 maxPoints.first = row;                                                                              // 在第一层记录坐标
                 maxPoints.second = col;
-//                qDebug() << "Row" << row << " Col" << col << " Val" << alpha_ << " Id" << threadIndex;
+                qDebug() << "Row" << row << " Col" << col << " Val" << alpha_ << " Id" << threadIndex;
             }
         }
 //        qDebug() << alpha_;
@@ -1355,7 +1354,7 @@ int Game::calculateScore()
     }
   result_ = Result::R_DRAW;  // 正常行棋
   // 判断禁手，只针对黑棋
-   judgeProhibit(state);
+//   judgeProhibit(state);
    state.clear();
    vector<vector<int>>().swap(state);   // 清空栈上空间
   if (stat_[1] > 0) result_ = Result::R_BLACK;
@@ -1365,21 +1364,21 @@ int Game::calculateScore()
 
 int Game::thread_calculateScore(int threadId)
 {
-    vector<int> black_weight = { 0,1000000,-10000000,
-                                 50000,-110000,  // 活4
-                                 500, -110000,  // 冲4_A
-                                 400, -100000,  // 冲4
-                                 400, -8000,  // 活3
+    vector<int> black_weight = { 0,3000000,-10000000,
+                                 80000,-110000,  // 活4
+                                 6500, -110000,  // 冲4_A
+                                 6300, -100000,  // 冲4
+                                 6000, -8000,  // 活3
                                  20, -50,  // 眠3
                                  20, -50,  // 活2
                                  1, -3,  // 眠2
                                  1,-3, // 活1
                                  1500000 -4000000 };  // AI为黑子时对棋型的估值
-    vector<int> white_weight = { 0,10000000,-1000000,
-                                 110000,-50000,
-                                 110000, -500,
-                                 100000, -400,
-                                 8000, -400,
+    vector<int> white_weight = { 0,10000000,-3000000,
+                                 110000,-80000,
+                                 110000, -3500,
+                                 100000, -3300,
+                                 8000, -3000,
                                  50, -20,
                                  50, -20,
                                  3, -1,
