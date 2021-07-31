@@ -29,18 +29,12 @@ enum class Result: int { R_DRAW,  // 正常行棋
                          R_BLACK,
 };
 
-enum class Prohibit: int {THREE_PRO,  // 三三禁手
-                          FOUR_PRO,  // 四四禁手
-                          FIVE_PRO ,  // 长连禁手
-
-};
-
 // 包含了五子棋游戏的基本过程操作
 class Game
 {
  public:
   Game(){
-    stat_ = vector<int>(11, 0);  // 初始化
+//    stat_ = vector<int>(11, 0);  // 初始化
   }
   Game(const Game&) = delete;  // not defined
   // Game& operator=(const Game&) = delete;  // not defined
@@ -59,10 +53,7 @@ class Game
   void threadMaxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, int, vector<vector<int>>&);       // 大顶堆
   void threadMinHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, int, vector<vector<int>>&);  // 小顶堆
   void judgeChessTypeEva(vector<vector<int>>&, vector<int>&);                                                                                                  // 判断棋局估值
-  void seekKillBlack(vector<pair<int, int>>&, int, vector<vector<int>>&);       // 寻找黑杀棋
-  void seekKillWhite(vector<pair<int, int>>&, int, vector<vector<int>>&);       // 寻找白杀棋
-  bool analyse_kill(int dep, pair<int, int>&);     // 算杀
-  bool judgeProhibit(vector<vector<int>>&);  // TODO判断禁手
+  bool judgeProhibit(int row, int col);  // TODO判断禁手
   void updatePoint(int x, int y);                       // 更新打点棋
 
  private:
@@ -75,13 +66,12 @@ class Game
   vector<pair<int, int>> trace_;             // 跟踪已经下了的棋（方便进行悔棋）
   int num_ = 0;                                     // 计数数字
   bool player_flag_;                             // 下棋状态(己方为true，敌方为false)
-  vector<int> stat_;                             // 统计必杀棋型数
+//  vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
   int chess_y_ = -1;
   int depth_ = 4;                                 // 搜索树深度
   int kill_depth_ = 8;
   Result result_;                                 // 判断是否存在必胜棋
-  Prohibit prohibit_;                            // 判断禁手的枚举变量
   int pointNum = 0;                           // 打点数
   QString prompt_text_;                 // 执行方的提示文本
   mutex m_mutex_;                          // 自旋锁

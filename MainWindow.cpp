@@ -459,15 +459,17 @@ void MainWindow::repentance()
          auto sit_prev = game_->trace_.back();
          game_->chess_board_[sit_prev.first][sit_prev.second] = 0;    // 并同时清空上次用户的走子（即悔棋）
          game_->number_[sit_prev.first][sit_prev.second] = 0;
+         game_->trace_.pop_back();
          game_->num_ -= 2;                                                                   // 回退两次计数
          update();                                                                                  // 最后再对棋盘进行一次更新
 }
 
 void MainWindow::generateChessManual()
 {
-//    if (game_->running_status_ != WIN) {        // 只有在游戏判定结束时才能打印棋谱
-//        return;
-//    }
+    if (game_->running_status_ != WIN) {        // 只有在游戏判定结束时才能打印棋谱
+        qDebug() << "You Can't print the chess manual!";
+        return;
+    }
     QString path = QFileDialog::getSaveFileName(this, "chess_manual", "C:/Users/49013/Desktop/棋谱文件/", "*.txt");  // 保存文件的对话框
     if (!path.isEmpty()) {
         QFile file(path);
@@ -496,12 +498,19 @@ void MainWindow::generateChessManual()
                 }
             }
             // 打印样例: [先手胜]
-            if (game_->num_ % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利)
-                qDebug() << ui->label_black->text().mid(5);  // 提取选手名称, mid类似substr
+            if (game_->num_ % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利), 当然也有可能出现禁手白棋胜利的情况
                 if (initial_name_ == ui->label_black->text().mid(5)) {  // 且为先手
-                    str += "[先手胜]";
+                    if (game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {           // 如果出现禁手, 对方胜利
+                        str += "[后手胜]";
+                    } else {
+                        str += "[先手胜]";
+                    }
                 } else {
-                    str += "[后手胜]";
+                    if (game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {           // 如果出现禁手
+                        str += "[先手胜]";
+                    } else {
+                        str += "[后手胜]";
+                    }
                 }
             } else {   // 决胜棋由白子下
                 if (initial_name_ == ui->label_white->text().mid(5)) {  // 且为先手
@@ -529,7 +538,6 @@ void MainWindow::generateChessManual()
                 int row = site.first;
                 int col = site.second;
                 // 打印横纵坐标对应的棋盘上的符号
-                qDebug() << row << " " << col;
                 str += "(" + row_assemble[row] + "," + col_assemble[col] + ");";
             }
             str.chop(1);   // 删除最后一个分号
@@ -543,7 +551,17 @@ void MainWindow::generateChessManual()
 
 void MainWindow::prohibitHandDialog()                 // TODO 禁手对话框提示
 {
-
+    QMessageBox btnValue;
+    btnValue.setIcon(QMessageBox::Information);
+    btnValue.setWindowTitle("游戏结束");
+    btnValue.setText("出现禁手, 白棋获胜!");
+    btnValue.setStandardButtons(QMessageBox::Ok);  // 设置按钮
+    btnValue.setDefaultButton(QMessageBox::Ok);     // 设置默认按钮
+    int ret = btnValue.exec();
+    switch (ret) {
+      case QMessageBox::Ok: btnValue.close(); break;
+      default: close();  // 默认关闭
+      }
 }
 
 void MainWindow::paintEvent(QPaintEvent*)
@@ -749,6 +767,13 @@ void MainWindow::chessOneByPerson()
         game_->updateMap(game_->chess_x_, game_->chess_y_);
         game_->run_procedure_ = CHESSING;
         QSound::play(CHESS_ONE_SOUND);  // 发出下棋的声音
+        // 判断禁手
+       if (game_->num_ >= 9 && game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {  // 最少9步之后，也就是三三禁手
+           game_->running_status_ = WIN;         // 改变状态
+           black_timer_->stop();
+           white_timer_->stop();
+           prohibitHandDialog();                   // 禁手提示框
+       }
         if (pointing_ai_) {  // 对所AI绘制的打点子进行清空, 并走子
             for (auto i : ai_record_) {
                 int row = i.first;
