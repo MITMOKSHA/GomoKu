@@ -45,6 +45,7 @@ class MainWindow : public QMainWindow
   void exchangeDialogPC();              // 玩家决定是否换手对话框
   void exchangeDialogAI();             //  AI提示是否换手对话框
   void repentance();                        //  悔棋操作函数
+  void Pass();                                   // PASS操作函数
   void generateChessManual();       // 生成棋谱操作
   void prohibitHandDialog();            // 禁手对话框提示
 
@@ -66,6 +67,7 @@ class MainWindow : public QMainWindow
   QTimer *white_timer_;
   QTime black_show_time_;               // 计时显示
   QTime white_show_time_;
-  QString initial_name_;           // 先手队伍名
+  QString initial_name_;           // 先手队伍
+  int pass_time_;                         // 悔棋的次数
 };
 #endif // MIANWINDOW_H_

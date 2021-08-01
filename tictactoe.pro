@@ -32,4 +32,5 @@ DISTFILES += \
     res/sound/win.wav
 
 RESOURCES += \
+    image.qrc \
     music.qrc

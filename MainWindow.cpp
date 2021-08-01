@@ -61,13 +61,20 @@ MainWindow::MainWindow(QWidget *parent)
   // 设置菜单栏及其选项
   QMenu* menu = menuBar()->addMenu(tr("Mode"));
   QAction* actionPVP = new QAction("玩家对战", this);
+  actionPVP->setIcon(QIcon(":res/image/game.png"));
   QAction* actionPVB = new QAction("人机对战", this);
+  actionPVB->setIcon(QIcon(":res/image/pvb_game.png"));
 
   // 设置菜单栏及其选项
   QMenu* menu_func = menuBar()->addMenu(tr("Function"));
   QAction* save_chess_game = new QAction("保存棋局", this);
+  save_chess_game->setIcon(QIcon(":res/image/save_chessgame.png"));
   QAction* chess_manual = new QAction("生成棋谱", this);
+  chess_manual->setIcon(QIcon(":res/image/chess_manual.png"));
   QAction* repent = new QAction("悔棋", this);
+  repent->setIcon(QIcon(":res/image/repentance.png"));
+  QAction* pass = new QAction("PASS", this);
+  pass->setIcon(QIcon(":res/image/pass.png"));
 
   // 给菜单栏添加选项
   menu->addAction(actionPVP);
@@ -75,6 +82,7 @@ MainWindow::MainWindow(QWidget *parent)
   menu_func->addAction(save_chess_game);
   menu_func->addAction(chess_manual);
   menu_func->addAction(repent);
+  menu_func->addAction(pass);
   // 菜单栏的信号与槽
 
   connect(actionPVP, &QAction::triggered, this, &MainWindow::PVPinitGame);                                                                                         // 人人对战
@@ -88,6 +96,7 @@ MainWindow::MainWindow(QWidget *parent)
       }
   });
   connect(repent, &QAction::triggered, this, &MainWindow::repentance);                                                                                             // 悔棋
+  connect(pass, &QAction::triggered, this, &MainWindow::Pass);                                                                                             // 玩家选择pass
   connect(chess_manual, &QAction::triggered, this, &MainWindow::generateChessManual);                                                                 // 打印棋谱
   connect(actionPVB, &QAction::triggered, this, &MainWindow::printTeamNameDialog);                                                                      // 打印队伍名对话框
   connect(actionPVB, &QAction::triggered, this, &MainWindow::initiativeDialog);                                                                                 // 开局选择先后手
@@ -121,6 +130,7 @@ void MainWindow::PVPinitGame()
   white_show_time_.setHMS(0, 15, 0);
   ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
   ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
+  pass_time_ = 0;
   black_timer_->stop();
   white_timer_->stop();
   update();
@@ -135,6 +145,7 @@ void MainWindow::PVBinitGame()
   ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
   ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
   digit_ = 0;
+  pass_time_ = 0;
   black_timer_->stop();
   white_timer_->stop();
   update();
@@ -456,6 +467,7 @@ void MainWindow::exchangeDialogAI()
  */
 void MainWindow::repentance()
 {
+    // 一次悔两步
         auto sit = game_->trace_.back();                             // 最近一次更新的棋子坐标
          game_->chess_board_[sit.first][sit.second] = 0;    // 对AI子进行一次清空
          game_->number_[sit.first][sit.second] = 0;            // 对计数数组中对应该坐标的元素清空为0
@@ -466,6 +478,15 @@ void MainWindow::repentance()
          game_->trace_.pop_back();
          game_->num_ -= 2;                                                                   // 回退两次计数
          update();                                                                                  // 最后再对棋盘进行一次更新
+}
+
+void MainWindow::Pass()                                                                // 一般只考虑对方选择PASS操作，我方AI多走一步子
+{
+    game_->player_flag_ = !game_->player_flag_;                           // 改变行棋状态(即若为黑子PASS之后还是黑子)
+    game_->actionByAI();                                                                // 机器多走一步
+    pass_time_++;                                                                            // 增加悔棋的次数, 用来打印棋谱用
+    QSound::play(CHESS_ONE_SOUND);
+    update();
 }
 
 void MainWindow::generateChessManual()
@@ -502,7 +523,7 @@ void MainWindow::generateChessManual()
                 }
             }
             // 打印样例: [先手胜]
-            if (game_->num_ % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利), 当然也有可能出现禁手白棋胜利的情况, 也有可能走完之后对手崩盘没有下
+            if ((game_->num_ + pass_time_) % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利), 当然也有可能出现禁手白棋胜利的情况, 也有可能走完之后对手崩盘没有下
                 if (initial_name_ == ui->label_black->text().mid(5)) {  // 且为先手
                     if (game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {           // 如果出现禁手, 对方胜利
                         str += "[后手胜]";
@@ -577,7 +598,7 @@ void MainWindow::paintEvent(QPaintEvent*)
   pen.setWidth(3);  // 调整粗细
   painter.setPen(pen);
   QBrush brush;
-  painter.drawPixmap(0, 0, 1000, 1000, QPixmap("D:/Qt project/Gobang/棋盘背景.png"));
+  painter.drawPixmap(0, 0, 1000, 1000, QPixmap(":/res/image/background.png"));
 
   // 绘制棋盘
   for (int i = 0; i < kGridNum; ++i)
@@ -597,9 +618,9 @@ void MainWindow::paintEvent(QPaintEvent*)
     }
 
   // 绘制字符
-  QFont font ("Comic Sans MS", 17, 50, false);
+  QFont font ("Comic Sans MS", 19, 80, false);
   font.setCapitalization(QFont::QFont::AllUppercase);  // 设置为大写
-  font.setLetterSpacing(QFont::AbsoluteSpacing, grid_x_ - font.pointSize() - pen.width() / 2 - 4);  // 设置字符间的间距
+  font.setLetterSpacing(QFont::AbsoluteSpacing, grid_x_ - font.pointSize() - pen.width() / 2 + 3);  // 设置字符间的间距
   painter.setFont(font);         // 使用字体
   painter.setPen(Qt::black);  // 设置画笔颜色
   painter.drawText(start_x_ - font.pointSize() / 2, start_y_ + kGridNum * grid_y_ + 5, tr("abcdefghijklmno"));  // 绘制文本
