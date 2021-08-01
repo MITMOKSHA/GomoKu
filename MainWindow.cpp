@@ -121,6 +121,8 @@ void MainWindow::PVPinitGame()
   white_show_time_.setHMS(0, 15, 0);
   ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
   ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
+  black_timer_->stop();
+  white_timer_->stop();
   update();
 }
 
@@ -133,6 +135,8 @@ void MainWindow::PVBinitGame()
   ui->label_black_time->setText(black_show_time_.toString("mm:ss"));
   ui->label_white_time->setText(black_show_time_.toString("mm:ss"));
   digit_ = 0;
+  black_timer_->stop();
+  white_timer_->stop();
   update();
 }
 
@@ -466,10 +470,10 @@ void MainWindow::repentance()
 
 void MainWindow::generateChessManual()
 {
-    if (game_->running_status_ != WIN) {        // 只有在游戏判定结束时才能打印棋谱
-        qDebug() << "You Can't print the chess manual!";
-        return;
-    }
+//    if (game_->running_status_ != WIN) {        // 只有在游戏判定结束时才能打印棋谱, 也有可能对面崩盘
+//        qDebug() << "You Can't print the chess manual!";
+//        return;
+//    }
     QString path = QFileDialog::getSaveFileName(this, "chess_manual", "C:/Users/49013/Desktop/棋谱文件/", "*.txt");  // 保存文件的对话框
     if (!path.isEmpty()) {
         QFile file(path);
@@ -498,7 +502,7 @@ void MainWindow::generateChessManual()
                 }
             }
             // 打印样例: [先手胜]
-            if (game_->num_ % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利), 当然也有可能出现禁手白棋胜利的情况
+            if (game_->num_ % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利), 当然也有可能出现禁手白棋胜利的情况, 也有可能走完之后对手崩盘没有下
                 if (initial_name_ == ui->label_black->text().mid(5)) {  // 且为先手
                     if (game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {           // 如果出现禁手, 对方胜利
                         str += "[后手胜]";
@@ -702,7 +706,9 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
       game_->chess_x_ = (x - (start_x_ - grid_x_ / 2)) / grid_x_;
       game_->chess_y_ = (y - (start_y_ - grid_y_ / 2)) / grid_y_;
       update();
-    }
+    } else {       // 鼠标触控不在期盼范围内的回应
+      return;
+  }
     // 人下棋，并且不能抢机器的棋
     if  (game_->run_procedure_ == DONE) {  // 且没有在打点
           chessOneByPerson();

@@ -24,11 +24,6 @@ enum RuningStatus {  // 防止抢棋
     CHESSING  // 走子
 };
 
-enum class Result: int { R_DRAW,  // 正常行棋
-                         R_WHITE,
-                         R_BLACK,
-};
-
 // 包含了五子棋游戏的基本过程操作
 class Game
 {
@@ -36,25 +31,27 @@ class Game
   Game(){
 //    stat_ = vector<int>(11, 0);  // 初始化
   }
-  Game(const Game&) = delete;  // not defined
-  // Game& operator=(const Game&) = delete;  // not defined
-  friend class MainWindow;               // 将MainWindow类声明为友元使得其能访问Game类的私有成员
-  bool isWin(int row, int col);             // 判断胜利
-  bool isDeadGame();                        // 判断和棋
-  void updateMap(int x, int y);           //  更新回合状态
-  void actionByAI();                           // 机器执行下棋
-  int calculateScore();                        // 估值函数
-  int thread_calculateScore(int threadId);          // 线程版本的估值函数
-  void startGame(GameType);           // 开始游戏
-  int AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex);                                                                                           // αβ剪枝
-  int threadAlphaBeta(int dep, int threadIndex, pair<int, int>& maxPoints);                                                   // 多线程AlphaBeta剪枝
-  void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, vector<vector<int>>&);       // 大根堆
-  void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, vector<vector<int>>&);  // 小根堆
-  void threadMaxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, int, vector<vector<int>>&);       // 大顶堆
-  void threadMinHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, int, vector<vector<int>>&);  // 小顶堆
-  void judgeChessTypeEva(vector<vector<int>>&, vector<int>&);                                                                                                  // 判断棋局估值
-  bool judgeProhibit(int row, int col);  // TODO判断禁手
-  void updatePoint(int x, int y);                       // 更新打点棋
+  Game(const Game&) = delete;                                                                                                                                                                         // not defined
+  // Game& operator=(const Game&) = delete;                                                                                                                                                  // not defined
+  friend class MainWindow;                                                                                                                                                                              // 将MainWindow类声明为友元使得其能访问Game类的私有成员
+  bool isWin(int row, int col);                                                                                                                                                                            // 判断胜利
+  bool isDeadGame();                                                                                                                                                                                        // 判断和棋
+  void updateMap(int x, int y);                                                                                                                                                                          //  更新回合状态
+  void actionByAI();                                                                                                                                                                                         // 机器执行下棋
+  int calculateScore();                                                                                                                                                                                     // 估值函数
+  int thread_calculateScore(int threadId);                                                                                                                                                     // 线程版本的估值函数
+  void startGame(GameType);                                                                                                                                                                          // 开始游戏
+  int AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex, bool isWin);                                                               // αβ剪枝
+  int threadAlphaBeta(int dep, int threadIndex, pair<int, int>& maxPoints);                                                                                                   // 多线程AlphaBeta剪枝
+  void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, vector<vector<int>>&);                                   // 大根堆
+  void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, vector<vector<int>>&);                              // 小根堆
+  void threadMaxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, int, vector<vector<int>>&);                  // 大顶堆
+  void threadMinHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, int, vector<vector<int>>&);             // 小顶堆
+  void judgeChessTypeEva(vector<vector<int>>&, vector<int>&);                                                                                                                      // 判断棋局估值
+  bool judgeProhibit(int row, int col);                                                                                                                                                              // 判断禁手
+  void updatePoint(int x, int y);                                                                                                                                                                        // 更新打点棋
+  bool judgeWinType(int x, int y, int threadIndex);                                                                                                                                         // 判断必胜棋型并传给枚举变量(线程版本)
+  bool judgeProhibitThread(int row, int col, int threadIndex);                                                                                                                        // 多线程情况下的判断禁手
 
  private:
   GameStatus running_status_;              // 运行状态
@@ -71,7 +68,6 @@ class Game
   int chess_y_ = -1;
   int depth_ = 4;                                 // 搜索树深度
   int kill_depth_ = 8;
-  Result result_;                                 // 判断是否存在必胜棋
   int pointNum = 0;                           // 打点数
   QString prompt_text_;                 // 执行方的提示文本
   mutex m_mutex_;                          // 自旋锁

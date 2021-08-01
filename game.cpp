@@ -35,6 +35,11 @@ enum class ChessType: int { OTHER = 0,  // 0, 其他棋型不考虑
                             WHITE_LIVE_LONG   // 白长连 -100000
                           };  // 限定作用域的枚举类型
 
+//enum class Result: int { R_DRAW,  // 正常行棋
+//                         R_WHITE,
+//                         R_BLACK,
+//};
+
 extern const int kGridNum;  // 声明mainwindow头文件中的变量
 
 bool Game::isWin(int row, int col)
@@ -107,6 +112,312 @@ void Game::updatePoint(int x, int y)
   // 同时不改变number数组的状态
 }
 
+bool Game::judgeWinType(int row, int col, int threadIndex)    // 对当前落子点进行滑动窗口
+{
+      // 对该坐标点进行禁手判断
+      vector<vector<int>>state(4, vector<int>(21, 0));                          //统计4个方向上每种棋型的个数(通过这个来判断禁手)
+      // 对该点的滑动窗口
+      for (int j = 0; j < 6; ++j) {
+          vector<int> slide(6, 0);                                                                // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+          // 棋值根据数组顺序分别对应0空位，1黑，2白
+          // 棋型辨识数组
+          vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数
+          for (int i = 0; i < 6; ++i) {
+              if (row + i - j >= kGridNum || row + i - j < 0) {                       // 边界检测, 不对col进行判断是因为传进来的坐标是在界内
+                  continue;
+              }
+              slide[i] = thread_chess_board_[threadIndex][row + i - j][col];
+          }
+          int index = 0;                                                                                               // 记录每组连续的元素
+          // 从左到右统计滑动窗口中的连续数目
+          for (int curr = 0; curr < (int)slide.size(); ++curr) {
+              int start = curr;                                                                                      // start指针记录起始位置
+              // 处理连续子
+              while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                  curr++;
+              }
+              int continue_count = curr - start + 1;                                                   // 当前元素的连续个数
+              // 判断棋型
+              if (slide[curr] == 0) {  // 空位
+                  continue_element[index][0] = continue_count;
+              } else if (slide[curr] == 1) {  // 黑棋
+                  continue_element[index][1] = continue_count;
+              } else if (slide[curr] == -1) {  // 白棋
+                  continue_element[index][2] = continue_count;
+              }
+              index++;
+          }
+          // 判断棋局估值
+          judgeChessTypeEva(continue_element, state[0]);                                  // 传递的是引用
+      }
+
+      // 垂直方向
+
+      for (int j = 0; j < 6; ++j) {
+          vector<int> slide(6);                                                                                   // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+          // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
+          vector<vector<int>> continue_element(6, vector<int>(3, 0));                 // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
+          for (int i = 0; i < 6; ++i) {
+              if (col + i - j >= kGridNum || col + i - j < 0) {
+                  continue;
+              }
+              slide[i] = thread_chess_board_[threadIndex][row][col + i - j];
+          }
+          int index = 0;                                                                                               // 记录每组连续的元素
+          // 从左到右统计滑动窗口中的连续数目
+          for (int curr = 0; curr < (int)slide.size(); ++curr) {
+              int start = curr;  // start指针记录起始位置
+              // 处理连续子
+              while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                  curr++;
+              }
+              int continue_count = curr - start + 1;   // 当前元素的连续个数
+              // 判断棋型
+              if (slide[curr] == 0) {                                                      // 空位
+                  continue_element[index][0] = continue_count;
+              } else if (slide[curr] == 1) {                                           // 黑棋
+                  continue_element[index][1] = continue_count;
+              } else if (slide[curr] == -1) {                                          // 白棋
+                  continue_element[index][2] =continue_count;
+              }
+              index++;
+          }
+
+          // 判断棋局估值
+          judgeChessTypeEva(continue_element, state[1]);      // 传递的是引用
+      }
+
+      // 正斜
+      for (int j = 0; j < 6; ++j) {
+          vector<int> slide(6, 0);                                                                             // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+          // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
+          vector<vector<int>> continue_element(6, vector<int>(3, 0));             // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
+          for (int i = 0; i < 6; ++i) {
+              if (row + i - j >= kGridNum  || col + i - j >= kGridNum || row + i - j < 0 || col + i - j < 0) {
+                  continue;
+              }
+              slide[i] = thread_chess_board_[threadIndex][row + i - j][col + i - j];
+          }
+          int index = 0;                                                                                              // 记录每组连续的元素
+          // 从左到右统计滑动窗口中的连续数目
+          for (int curr = 0; curr < (int)slide.size(); ++curr) {
+              int start = curr;                                                                                      // start指针记录起始位置
+              // 处理连续子
+              while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                  curr++;
+              }
+              int continue_count = curr - start + 1;                  // 当前元素的连续个数
+              // 判断棋型
+              if (slide[curr] == 0) {                                             // 空位
+                  continue_element[index][0] = continue_count;
+              } else if (slide[curr] == 1) {                                  // 黑棋
+                  continue_element[index][1] = continue_count;
+              } else if (slide[curr] == -1) {                                 // 白棋
+                  continue_element[index][2] =continue_count;
+              }
+              index++;
+          }
+          // 判断棋局估值
+          judgeChessTypeEva(continue_element, state[2]);                    // 传递的是引用
+      }
+
+      // 反斜
+      for (int j = 0; j < 6; ++j) {
+          vector<int> slide(6, 0);                                                                 // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+          // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
+          vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
+          for (int i = 0; i < 6; ++i) {
+              if (row + i - j >= kGridNum || col - i + j >= kGridNum || row + i - j < 0 || col - i + j <0) {
+                  continue;
+              }
+              slide[i] = thread_chess_board_[threadIndex][row + i - j][col - i + j];
+          }
+          int index = 0;                                                                                               // 记录每组连续的元素
+          // 从左到右统计滑动窗口中的连续数目
+          for (int curr = 0; curr < (int)slide.size(); ++curr) {
+              int start = curr;  // start指针记录起始位置
+              // 处理连续子
+              while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                  curr++;
+              }
+              int continue_count = curr - start + 1;                                                  // 当前元素的连续个数
+              // 判断棋型
+              if (slide[curr] == 0) {                                                                            // 空位
+                  continue_element[index][0] = continue_count;
+              } else if (slide[curr] == 1) {                                                                  // 黑棋
+                  continue_element[index][1] = continue_count;
+              } else if (slide[curr] == -1) {                                                                 // 白棋
+                  continue_element[index][2] =continue_count;
+              }
+              index++;
+          }
+          // 判断棋局估值
+          judgeChessTypeEva(continue_element, state[3]);  // 传递的是引用
+      }
+      // 1表示黑连5, 19表示白长连; 2表示白连5, 20表示白长连
+      int black_win_count = state[0][1] + state[1][1] + state[2][1] + state[3][1] + state[0][19] + state[1][19] + state[2][19] + state[3][19];
+      int white_win_count = state[0][2] + state[1][2] + state[2][2] + state[3][2] + state[0][20] + state[1][20] + state[2][20] + state[3][20];
+      if (black_win_count > 0 || white_win_count) {
+          return true;           // 产生必胜返回true
+      }
+      return false;
+}
+
+bool Game::judgeProhibitThread(int row, int col, int threadIndex)
+{
+    // 对该坐标点进行禁手判断
+    vector<vector<int>>state(4, vector<int>(21, 0));                          //统计4个方向上每种棋型的个数(通过这个来判断禁手)
+    // 对该点的滑动窗口
+    for (int j = 0; j < 6; ++j) {
+        vector<int> slide(6, 0);                                                                // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+        // 棋值根据数组顺序分别对应0空位，1黑，2白
+        // 棋型辨识数组
+        vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数
+        for (int i = 0; i < 6; ++i) {
+            if (row + i - j >= kGridNum || row + i - j < 0) {                       // 边界检测, 不对col进行判断是因为传进来的坐标是在界内
+                continue;
+            }
+            slide[i] = thread_chess_board_[threadIndex][row + i - j][col];
+        }
+        int index = 0;                                                                                               // 记录每组连续的元素
+        // 从左到右统计滑动窗口中的连续数目
+        for (int curr = 0; curr < (int)slide.size(); ++curr) {
+            int start = curr;                                                                                      // start指针记录起始位置
+            // 处理连续子
+            while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                curr++;
+            }
+            int continue_count = curr - start + 1;                                                   // 当前元素的连续个数
+            // 判断棋型
+            if (slide[curr] == 0) {  // 空位
+                continue_element[index][0] = continue_count;
+            } else if (slide[curr] == 1) {  // 黑棋
+                continue_element[index][1] = continue_count;
+            } else if (slide[curr] == -1) {  // 白棋
+                continue_element[index][2] = continue_count;
+            }
+            index++;
+        }
+        // 判断棋局估值
+        judgeChessTypeEva(continue_element, state[0]);                                  // 传递的是引用
+    }
+
+    // 垂直方向
+
+    for (int j = 0; j < 6; ++j) {
+        vector<int> slide(6);                                                                                   // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+        // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
+        vector<vector<int>> continue_element(6, vector<int>(3, 0));                 // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
+        for (int i = 0; i < 6; ++i) {
+            if (col + i - j >= kGridNum || col + i - j < 0) {
+                continue;
+            }
+            slide[i] = thread_chess_board_[threadIndex][row][col + i - j];
+        }
+        int index = 0;                                                                                               // 记录每组连续的元素
+        // 从左到右统计滑动窗口中的连续数目
+        for (int curr = 0; curr < (int)slide.size(); ++curr) {
+            int start = curr;  // start指针记录起始位置
+            // 处理连续子
+            while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                curr++;
+            }
+            int continue_count = curr - start + 1;   // 当前元素的连续个数
+            // 判断棋型
+            if (slide[curr] == 0) {                                                      // 空位
+                continue_element[index][0] = continue_count;
+            } else if (slide[curr] == 1) {                                           // 黑棋
+                continue_element[index][1] = continue_count;
+            } else if (slide[curr] == -1) {                                          // 白棋
+                continue_element[index][2] =continue_count;
+            }
+            index++;
+        }
+
+        // 判断棋局估值
+        judgeChessTypeEva(continue_element, state[1]);      // 传递的是引用
+    }
+
+    // 正斜
+    for (int j = 0; j < 6; ++j) {
+        vector<int> slide(6, 0);                                                                             // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+        // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
+        vector<vector<int>> continue_element(6, vector<int>(3, 0));             // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
+        for (int i = 0; i < 6; ++i) {
+            if (row + i - j >= kGridNum  || col + i - j >= kGridNum || row + i - j < 0 || col + i - j < 0) {
+                continue;
+            }
+            slide[i] = thread_chess_board_[threadIndex][row + i - j][col + i - j];
+        }
+        int index = 0;                                                                                              // 记录每组连续的元素
+        // 从左到右统计滑动窗口中的连续数目
+        for (int curr = 0; curr < (int)slide.size(); ++curr) {
+            int start = curr;                                                                                      // start指针记录起始位置
+            // 处理连续子
+            while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                curr++;
+            }
+            int continue_count = curr - start + 1;                  // 当前元素的连续个数
+            // 判断棋型
+            if (slide[curr] == 0) {                                             // 空位
+                continue_element[index][0] = continue_count;
+            } else if (slide[curr] == 1) {                                  // 黑棋
+                continue_element[index][1] = continue_count;
+            } else if (slide[curr] == -1) {                                 // 白棋
+                continue_element[index][2] =continue_count;
+            }
+            index++;
+        }
+        // 判断棋局估值
+        judgeChessTypeEva(continue_element, state[2]);                    // 传递的是引用
+    }
+
+    // 反斜
+    for (int j = 0; j < 6; ++j) {
+        vector<int> slide(6, 0);                                                                 // 存储当前滑动窗口的元素（在每次循环结束后会自动重新初始化）
+        // 棋值根据数组顺序分别对应0,1,2 -----空位,黑,白
+        vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数  （在每次循环结束后会自动重新初始化）
+        for (int i = 0; i < 6; ++i) {
+            if (row + i - j >= kGridNum || col - i + j >= kGridNum || row + i - j < 0 || col - i + j <0) {
+                continue;
+            }
+            slide[i] = thread_chess_board_[threadIndex][row + i - j][col - i + j];
+        }
+        int index = 0;                                                                                               // 记录每组连续的元素
+        // 从左到右统计滑动窗口中的连续数目
+        for (int curr = 0; curr < (int)slide.size(); ++curr) {
+            int start = curr;  // start指针记录起始位置
+            // 处理连续子
+            while (curr + 1 < (int)slide.size() && slide[curr] == slide[curr+1]) {  // 若当前元素与下一个元素相等（出现连续）
+                curr++;
+            }
+            int continue_count = curr - start + 1;                                                  // 当前元素的连续个数
+            // 判断棋型
+            if (slide[curr] == 0) {                                                                            // 空位
+                continue_element[index][0] = continue_count;
+            } else if (slide[curr] == 1) {                                                                  // 黑棋
+                continue_element[index][1] = continue_count;
+            } else if (slide[curr] == -1) {                                                                 // 白棋
+                continue_element[index][2] =continue_count;
+            }
+            index++;
+        }
+        // 判断棋局估值
+        judgeChessTypeEva(continue_element, state[3]);  // 传递的是引用
+    }
+        // 专门统计黑棋(禁手只针对黑棋)
+        // 黑子: 9表示活三, 5和7表示冲四, 3表示活四 , 1表示连五, 11表示眠三, 19表示长连
+        int five = state[0][1] + state[1][1] + state[2][1] + state[3][1];                                                                                                                                // 统计当前棋走子后成5的个数
+        int live_three_count = state[0][9] + state[1][9] + state[2][9] + state[3][9];                                                                                               // 统计当前棋走子后活3的个数
+        int rush_four_count = state[0][5] + state[1][5] + state[2][5] + state[3][5] + state[0][7] + state[1][7] + state[2][7] + state[3][7];        // 统计当前走子后冲4的个数
+        int long_count = state[0][19] + state[1][19] + state[2][19] + state[3][19];                                                                                                           // 统计当前走子后长连的个数
+        // 注意:黑方五连和禁手同时形成判黑方胜(即五连时禁手失效), TODO即(需要完善长连+五连的情况, 这种情况罕见, 所以暂不考虑)
+        if (((live_three_count > 2 || rush_four_count >= 4 || (live_three_count >= 2 && rush_four_count >= 2)) && five == 0) || (long_count >= 1 && five <= 2)) {
+            return true;        // 出现禁手返回真值(禁手生效)
+        }
+        return false;         // 默认为不出现禁手
+}
+
 void Game::updateMap (int x, int y)
 {
   if (player_flag_) {
@@ -121,7 +432,7 @@ void Game::updateMap (int x, int y)
   player_flag_ = !player_flag_;                      // 交换棋权
 }
 
-bool Game::judgeProhibit(int row, int col)
+bool Game::judgeProhibit(int row, int col)     // 对穿入的点进行滑动操作
 {
     // 对该坐标点进行禁手判断
     vector<vector<int>>state(4, vector<int>(21, 0));                          //统计4个方向上每种棋型的个数(通过这个来判断禁手)
@@ -576,8 +887,8 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
         {
             if (i >= 0 && i < kGridNum &&  // 判断是否越界
                     thread_chess_board_[threadId][i][col] == 0 &&  // 空位(才能进行回溯生成走法)
-                    marked[i][col] == false && // 且没有被估值过
-                     !judgeProhibit(i, col)) {      // 且不会形成禁手
+                    marked[i][col] == false // 且没有被估值过
+                     ) {
                 thread_chess_board_[threadId][i][col] = -1;
                 val = thread_calculateScore(threadId);   // 当前坐标点估值
                 if (flag < max_flag) {
@@ -597,8 +908,8 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
         for (int i = col - extension; i <= col + extension; ++i) {  // 垂直
             if (i >= 0 && i < kGridNum &&
                     thread_chess_board_[threadId][row][i] == 0 &&
-                    marked[row][i] == false && // 没有被估值过
-                     !judgeProhibit(row, i)) {
+                    marked[row][i] == false // 没有被估值过
+                     ) {
                 thread_chess_board_[threadId][row][i] = -1;
                 val = thread_calculateScore(threadId);
                 if (flag < max_flag) {  // 选10个
@@ -619,8 +930,8 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
             if (i >= 0 && i < kGridNum &&
                     j >= 0 && j < kGridNum &&
                     thread_chess_board_[threadId][i][j] == 0 &&
-                    marked[i][j] == false && // 没有被估值过
-                     !judgeProhibit(i, j)) {
+                    marked[i][j] == false // 没有被估值过
+                     ) {
                 thread_chess_board_[threadId][i][j] = -1;
                 val = thread_calculateScore(threadId);
                 if (flag < max_flag) {
@@ -641,8 +952,8 @@ void Game::threadMaxHeap(priority_queue<vector<int>, vector<vector<int> >, less<
             if (i >= 0 && i < kGridNum &&
                     j >= 0 && j < kGridNum &&
                     thread_chess_board_[threadId][i][j] == 0 &&
-                    marked[i][j] == false && // 没有被估值过
-                     !judgeProhibit(i, j)) {
+                    marked[i][j] == false // 没有被估值过
+                     ) {
                 thread_chess_board_[threadId][i][j] = -1;
                 val = thread_calculateScore(threadId);
                 if (flag < max_flag) {
@@ -681,8 +992,8 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
         {
             if (i >= 0 && i < kGridNum &&
                     thread_chess_board_[threadId][i][col] == 0 &&  // 空位(才能进行回溯生成走法)
-                    marked[i][col] == false && // 且没有被估值过
-                     !judgeProhibit(i, col)) {     // 且不会形成禁手
+                    marked[i][col] == false // 且没有被估值过
+                     ) {     // 且不会形成禁手
                 thread_chess_board_[threadId][i][col] = 1;
                 val = thread_calculateScore(threadId);  // 存储估值
                 if (flag < max_flag) {  // 维护max_flag走法
@@ -702,8 +1013,8 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
         for (int i = col - extension; i <= col + extension; ++i) {  // 垂直
             if (i >= 0 && i < kGridNum &&
                     thread_chess_board_[threadId][row][i] == 0 &&
-                    marked[row][i] == false && // 没有被估值过
-                     !judgeProhibit(row, i)) {
+                    marked[row][i] == false // 没有被估值过
+                     ) {
                 thread_chess_board_[threadId][row][i] = 1;
                 val = thread_calculateScore(threadId);
                 if (flag < max_flag) {  // 选max_flag个
@@ -724,8 +1035,8 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
             if (i >= 0 && i < kGridNum &&
                     j >= 0 && j < kGridNum &&
                     thread_chess_board_[threadId][i][j] == 0 &&
-                    marked[i][j] == false && // 没有被估值过
-                     !judgeProhibit(i, j)) {
+                    marked[i][j] == false // 没有被估值过
+                     ) {
                 thread_chess_board_[threadId][i][j] = 1;
                 val = thread_calculateScore(threadId);
                 if (flag < max_flag) {
@@ -746,8 +1057,8 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
             if (i >= 0 && i < kGridNum &&
                     j >= 0 && j < kGridNum &&
                     thread_chess_board_[threadId][i][j] == 0 &&
-                    marked[i][j] == false && // 没有被估值过
-                     !judgeProhibit(i, j)) {
+                    marked[i][j] == false // 没有被估值过
+                     ) {
                 thread_chess_board_[threadId][i][j] = 1;
                 val = thread_calculateScore(threadId);
                 if (flag < max_flag) {
@@ -772,7 +1083,7 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
     }
 }
 
-int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex)  // 极大极小值搜索
+int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex, bool isWin)  // 极大极小值搜索
 {
 #if 0  // 单进程版本
     // alpha 为最大下界，beta为最小上界
@@ -829,7 +1140,8 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
 #if 1  // 多线程版本
     // alpha 为最大下界，beta为最小上界
     if (dep % 2 ==  0) {                                                                                                        // max层
-        if (dep == 0 || isDeadGame())  // 递归终止的条件，当前层出现必胜棋
+        // TODO可以加一个判断成五的判断，并将值赋给枚举变量result_，减缓直接用估值函数的负担
+        if (dep == 0 || isWin || isDeadGame())  // 递归终止的条件，或当前层出现必胜棋直接返回(直接影响整个棋局估值走势，非常关键！！比如黑作为计算机子先达到连5就不需要再估计白了(白也有可能达到连五而且估值比黑大))
         {
             return thread_calculateScore(threadIndex);  // 估值
         }
@@ -843,10 +1155,16 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
-            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex);  // 返回极大值
+            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极大值
             thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
             if (alpha < bestvalue)  // 更新alpha的值
             {
+                thread_chess_board_[threadIndex][row][col] = 1;
+                if (judgeProhibitThread(row, col, threadIndex)) {   // 如果该点为禁着, 则取下一个点, 只需要在黑层判断
+                    thread_chess_board_[threadIndex][row][col] = 0;
+                    continue;
+                }
+                thread_chess_board_[threadIndex][row][col] = 0;    // 回溯
                 alpha = bestvalue;  // max层更新自己的下界
             }
             if (alpha >= beta)
@@ -855,7 +1173,7 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
         return alpha;
       }
     else {  // min层
-        if (dep == 0 || isDeadGame())  // 必杀棋直接返回结果
+        if (dep == 0 || isWin || isDeadGame())  // 必杀棋直接返回结果
         {
             return thread_calculateScore(threadIndex);
         }
@@ -869,7 +1187,7 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
-            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex);  // 返回极小值
+            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极小值
             thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
             if (beta > bestvalue)  // 更新beta的值
             {
@@ -900,11 +1218,18 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
-            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex);  // 返回极大值
+            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极大值
             thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
             lock_guard<mutex> locker(m_mutex_);   // RAII机制
             if (alpha_ < bestvalue)  // 更新alpha的值
             {
+                // 更新前判断是否是禁手
+                thread_chess_board_[threadIndex][row][col] = 1;
+                if (judgeProhibitThread(row, col, threadIndex)) {   // 如果该点为禁着, 则取下一个点, 只需要在黑层判断
+                    thread_chess_board_[threadIndex][row][col] = 0;
+                    continue;
+                }
+                thread_chess_board_[threadIndex][row][col] = 0;    // 回溯
                 alpha_ = bestvalue;  // max层更新自己的下界
                 maxPoints.first = row;                                                                              // 在第一层记录坐标
                 maxPoints.second = col;
@@ -926,7 +1251,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
-            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex);  // 返回极小值
+            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极小值
             thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
             lock_guard<mutex> locker(m_mutex_);   // RAII机制
             if (beta_ > bestvalue)  // 更新beta的值
@@ -1357,26 +1682,26 @@ int Game::calculateScore()
 
 int Game::thread_calculateScore(int threadId)
 {
-    vector<int> black_weight = { 0,10000000,-3000000,
-                                 80000,-110000,  // 活4
-                                 6500, -110000,  // 冲4_A
-                                 6300, -100000,  // 冲4
-                                 6000, -8000,  // 活3
+    vector<int> black_weight = { 0,9000000,-10000000,
+                                 50000,-110000,  // 活4
+                                 2600, -110000,  // 冲4_A
+                                 2500, -100000,  // 冲4
+                                 2500, -8000,  // 活3
                                  20, -50,  // 眠3
                                  20, -50,  // 活2
                                  1, -3,  // 眠2
                                  1,-3, // 活1
-                                 10000000,-3000000 };  // AI为黑子时对棋型的估值
-    vector<int> white_weight = { 0,3000000,-10000000,
-                                 110000,-80000,
-                                 110000, -6500,
-                                 100000, -6300,
-                                 8000, -6000,
+                                 9000000,-10000000 };  // AI为黑子时对棋型的估值
+    vector<int> white_weight = { 0,10000000,-9000000,
+                                 110000,-50000,
+                                 110000, -2600,
+                                 100000, -2500,
+                                 8000, -2500,
                                  50, -20,
                                  50, -20,
                                  3, -1,
                                  3,-1,
-                                 3000000,-10000000};  // AI为白子时对棋型的估值
+                                 10000000,-9000000};  // AI为白子时对棋型的估值
     vector<int> weight;
     if (color_) {  // 黑方为AI
         weight = std::move(black_weight);
@@ -1519,12 +1844,14 @@ int Game::thread_calculateScore(int threadId)
             // 判断棋局估值
             judgeChessTypeEva(continue_element, state[3]);  // 传递的是引用
           }
-    int score = 0;  // 统计当前位置的估值
+    int score = 0;  //
+    vector<int> stat_(3, 0);              // 统计必胜棋型
     for (int i = 1; i < 21; ++i) {
         int count = state[0][i] + state[1][i] + state[2][i] + state[3][i];//统计所有方向上部分棋型的个数
         score += count * weight[i];  // 初步计分
         // 统计算杀棋
-//        if(i == 1 || i == 19) stat_[1] = count;  // 连五，以及长连都算连5
+//        if(i == 1 || i == 19) stat_[1] = count;  // 黑成五，以及长连都算连5
+//        else if (i == 2 || i == 20) stat_[1]  = count;      // 白成五
 //        else if  (i == 3) stat_[3] = count;  // 活四
 //        else if  (i == 5) stat_[5] = count;  // 冲四_A
 //        else if (i == 7) stat_[7] = count;  // 冲四
@@ -1532,8 +1859,7 @@ int Game::thread_calculateScore(int threadId)
       }
     state.clear();
     vector<vector<int>>().swap(state);   // 清空栈上空间
-//    result_ = Result::R_DRAW;  // 正常行棋
-     // 判断禁手，只针对黑棋
+//    result_ = Result::R_DRAW;  // 正常行棋(默认情况)
 //    if (stat_[1] > 0) result_ = Result::R_BLACK;
 //    else if (stat_[2] > 0) result_ = Result::R_WHITE;
     return score;
