@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
   grid_y_ = width() / 20;
   start_x_ = 3 * grid_x_;
   start_y_ = 3 * grid_y_;
+  this->setWindowIcon(QIcon(":/chess.ico"));
 
   // 设置Label样式
   ui->label_white_time->setStyleSheet("color:rgb(255, 255, 255)");
@@ -89,7 +90,7 @@ MainWindow::MainWindow(QWidget *parent)
   connect(actionPVB, &QAction::triggered, this, &MainWindow::PVBinitGame);                                                                                        // 人机对战
   connect(save_chess_game, &QAction::triggered, this, [this](){                                                                                                             // 保存当前棋局, 保存至当前电脑的桌面
       QPixmap pixMap_ = QWidget::grab();
-      QString path = QFileDialog::getSaveFileName(this, "savedchessGame", "C:/Users/49013/Desktop/savedchessGame/", "*.png");   // 保存文件路径对话框
+      QString path = QFileDialog::getSaveFileName(this, "savedchessGame", "../Gobang/saved_chessgame/", "*.png");   // 保存文件路径对话框
       if (!path.isEmpty()) {
           pixMap_.save(path, "PNG");
           qDebug() << "saved";
@@ -495,7 +496,7 @@ void MainWindow::generateChessManual()
 //        qDebug() << "You Can't print the chess manual!";
 //        return;
 //    }
-    QString path = QFileDialog::getSaveFileName(this, "chess_manual", "C:/Users/49013/Desktop/棋谱文件/", "*.txt");  // 保存文件的对话框
+    QString path = QFileDialog::getSaveFileName(this, "chess_manual", "../Gobang/chess_manual/", "*.txt");  // 保存文件的对话框
     if (!path.isEmpty()) {
         QFile file(path);
         bool isok = file.open(QIODevice::WriteOnly);
@@ -522,7 +523,7 @@ void MainWindow::generateChessManual()
                     str += "五子棋 W]";
                 }
             }
-            // 打印样例: [先手胜]
+            // 打印样例: [先手胜](目前只能保证对手pass次数<=1的时候打谱正常)
             if ((game_->num_ + pass_time_) % 2 != 0) {  // 最后一个子是黑子(表示黑子走完该子胜利), 当然也有可能出现禁手白棋胜利的情况, 也有可能走完之后对手崩盘没有下
                 if (initial_name_ == ui->label_black->text().mid(5)) {  // 且为先手
                     if (game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {           // 如果出现禁手, 对方胜利

@@ -8,5 +8,6 @@
         <file>res/image/repentance.png</file>
         <file>res/image/save_chessgame.png</file>
         <file>res/image/pass.png</file>
+        <file>chess.ico</file>
     </qresource>
 </RCC>
