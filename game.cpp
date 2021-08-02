@@ -1259,6 +1259,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
                 maxPoints.first = row;                                                                              // 在第一层记录坐标
                 maxPoints.second = col;
                 beta_ = bestvalue;  // min层更新自己的上界
+                qDebug() << "Row" << row << " Col" << col << " Val" << beta_ << " Id" << threadIndex;
             }
         }
         return beta_;

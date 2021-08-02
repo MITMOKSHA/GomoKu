@@ -21,6 +21,7 @@
 #include <QFileDialog>
 #include <QString>
 #include <unordered_map>
+#include <qelapsedtimer.h>
 
 #define CHESS_ONE_SOUND ":/res/sound/chessone.wav"  // 声音文件
 #define WIN_SOUND ":/res/sound/win.wav"
@@ -41,7 +42,6 @@ MainWindow::MainWindow(QWidget *parent)
   grid_y_ = width() / 20;
   start_x_ = 3 * grid_x_;
   start_y_ = 3 * grid_y_;
-  this->setWindowIcon(QIcon(":/chess.ico"));
 
   // 设置Label样式
   ui->label_white_time->setStyleSheet("color:rgb(255, 255, 255)");
@@ -52,11 +52,11 @@ MainWindow::MainWindow(QWidget *parent)
   black_timer_ = new QTimer(this);                                                                    // 创建定时器
   white_timer_ = new QTimer(this);
   connect(black_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      black_show_time_ = black_show_time_.addMSecs(-500);
+      black_show_time_ = black_show_time_.addMSecs(-400);
       ui->label_black_time->setText(black_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
   });
   connect(white_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      white_show_time_ = white_show_time_.addMSecs(-500);
+      white_show_time_ = white_show_time_.addMSecs(-400);
       ui->label_white_time->setText(white_show_time_.toString("mm:ss"));       // 不断更新时钟当前的时间
   });
   // 设置菜单栏及其选项
@@ -765,13 +765,24 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
         // 用定时器做一个延迟
         QTimer::singleShot(kAIDelay, this,
                            [this]() {
+              QElapsedTimer* time = new QElapsedTimer;
+              time->start();
               game_->actionByAI();  // AI走子
-              if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && !game_->player_flag_ && game_->running_status_ != WIN) {   // 胜利时停止计时
-                  white_timer_->start(500);
-                  black_timer_->stop();
-              } else if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->player_flag_ && game_->running_status_ != WIN) {
-                  black_timer_->start(500);
-                  white_timer_->stop();
+              int interval = time->elapsed();             // 将该函数的运行时间返回
+              time = nullptr;
+              delete time;
+              if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->running_status_ != WIN) {
+                  if (!game_->player_flag_) {   // 胜利时停止计时
+                      white_timer_->start(500);
+                      black_timer_->stop();
+                      black_show_time_ = black_show_time_.addMSecs(-interval);          // 计算保存下计算机的行棋时间
+                      ui->label_black_time->setText(black_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
+                  } else if (game_->player_flag_) {
+                      black_timer_->start(500);
+                      white_timer_->stop();
+                      white_show_time_ = white_show_time_.addMSecs(-interval);          // 计算保存下计算机的行棋时间
+                      ui->label_white_time->setText(white_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
+                  }
               }
               QSound::play(CHESS_ONE_SOUND);
               update();                                                                                  // 更新棋盘
@@ -829,11 +840,13 @@ void MainWindow::chessOneByPerson()
      }
     }
   // 开局打点之后就开始计时
-  if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->player_flag_ && game_->running_status_ != WIN) {   // 胜利时停止计时
-      black_timer_->start(500);
-      white_timer_->stop();
-  } else if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && !game_->player_flag_ && game_->running_status_ != WIN) {
-      white_timer_->start(500);
-      black_timer_->stop();
+  if (game_->number_[game_->chess_x_][game_->chess_y_] >= 5 && game_->running_status_ != WIN) {
+      if (game_->player_flag_ ) {   // 胜利时停止计时
+          black_timer_->start(500);
+          white_timer_->stop();
+      } else if (!game_->player_flag_) {
+          white_timer_->start(500);
+          black_timer_->stop();
+      }
   }
 }

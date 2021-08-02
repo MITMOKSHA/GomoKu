@@ -76,7 +76,7 @@ class Game
   bool color_;                                     // 判断哪边是电脑, 黑方是AI为true, 白方是AI为false
   int counts = 0;                                // 处理个数
   int alpha_;                                     // 最大下限
-  int beta_;                                    // 最小上限
+  int beta_;                                    // 最小上限、
 };
 
 #endif // GAME_H_
