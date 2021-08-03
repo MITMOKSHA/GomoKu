@@ -580,7 +580,7 @@ void MainWindow::prohibitHandDialog()                 // TODO 禁手对话框提
     QMessageBox btnValue;
     btnValue.setIcon(QMessageBox::Information);
     btnValue.setWindowTitle("游戏结束");
-    btnValue.setText("出现禁手, 白棋获胜!");
+    btnValue.setText("出现禁手!");
     btnValue.setStandardButtons(QMessageBox::Ok);  // 设置按钮
     btnValue.setDefaultButton(QMessageBox::Ok);     // 设置默认按钮
     int ret = btnValue.exec();
@@ -809,8 +809,10 @@ void MainWindow::chessOneByPerson()
         // 判断禁手
        if (game_->num_ >= 9 && game_->judgeProhibit(game_->chess_x_, game_->chess_y_)) {  // 最少9步之后，也就是三三禁手
            game_->running_status_ = WIN;         // 改变状态
+           game_->run_procedure_ = DONE;      // 防止出现禁手后AI再下
            black_timer_->stop();
            white_timer_->stop();
+           QSound::play(LOSE_SOUND);
            prohibitHandDialog();                   // 禁手提示框
        }
         if (pointing_ai_) {  // 对所AI绘制的打点子进行清空, 并走子

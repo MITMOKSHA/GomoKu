@@ -41,7 +41,7 @@ class Game
   int calculateScore();                                                                                                                                                                                     // 估值函数
   int thread_calculateScore(int threadId);                                                                                                                                                     // 线程版本的估值函数
   void startGame(GameType);                                                                                                                                                                          // 开始游戏
-  int AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex, bool isWin);                                                               // αβ剪枝
+  int AlphaBeta(int dep, int alpha, int beta, int threadIndex, bool isWin);                                                               // αβ剪枝
   int threadAlphaBeta(int dep, int threadIndex, pair<int, int>& maxPoints);                                                                                                   // 多线程AlphaBeta剪枝
   void maxHeap(priority_queue<vector<int>, vector<vector<int>>, less<vector<int>>>& , int&, int, vector<vector<int>>&);                                   // 大根堆
   void minHeap(priority_queue<vector<int>, vector<vector<int>>, greater<vector<int>>>& , int&, int, vector<vector<int>>&);                              // 小根堆
@@ -66,7 +66,7 @@ class Game
 //  vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
   int chess_y_ = -1;
-  int depth_ = 4;                                 // 搜索树深度
+  int depth_ = 6;                                 // 搜索树深度
   int kill_depth_ = 8;
   int pointNum = 0;                           // 打点数
   QString prompt_text_;                 // 执行方的提示文本

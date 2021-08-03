@@ -1083,7 +1083,7 @@ void Game::threadMinHeap(priority_queue<vector<int>, vector<vector<int> >, great
     }
 }
 
-int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int threadIndex, bool isWin)  // 极大极小值搜索
+int Game::AlphaBeta(int dep, int alpha, int beta, int threadIndex, bool isWin)  // 极大极小值搜索
 {
 #if 0  // 单进程版本
     // alpha 为最大下界，beta为最小上界
@@ -1155,7 +1155,7 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
-            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极大值
+            int bestvalue = AlphaBeta(dep - 1, alpha, beta, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极大值
             thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
             if (alpha < bestvalue)  // 更新alpha的值
             {
@@ -1187,7 +1187,7 @@ int Game::AlphaBeta(int dep, int alpha, int beta, pair<int, int>& maxPoints, int
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
-            int bestvalue = AlphaBeta(dep - 1, alpha, beta, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极小值
+            int bestvalue = AlphaBeta(dep - 1, alpha, beta, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极小值
             thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
             if (beta > bestvalue)  // 更新beta的值
             {
@@ -1218,7 +1218,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = 1;                          // 虚拟走子
-            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极大值
+            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极大值
             thread_chess_board_[threadIndex][row][col] = 0;                          // 回溯
             lock_guard<mutex> locker(m_mutex_);   // RAII机制
             if (alpha_ < bestvalue)  // 更新alpha的值
@@ -1251,7 +1251,7 @@ int Game::threadAlphaBeta(int dep, int threadIndex, pair<int, int> &maxPoints)
             int row = thread_sort_heap[i][1];
             int col = thread_sort_heap[i][2];
             thread_chess_board_[threadIndex][row][col] = -1;  // 虚拟AI走子
-            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, maxPoints, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极小值
+            int bestvalue = AlphaBeta(dep - 1, alpha_, beta_, threadIndex, judgeWinType(row, col, threadIndex));  // 返回极小值
             thread_chess_board_[threadIndex][row][col] = 0;  // 回溯
             lock_guard<mutex> locker(m_mutex_);   // RAII机制
             if (beta_ > bestvalue)  // 更新beta的值
@@ -1499,26 +1499,26 @@ void Game::judgeChessTypeEva(vector<vector<int>>& continue_element, vector<int>&
 // 估值函数(采用全局估值)
 int Game::calculateScore()
 {                                      //      ------连五------------|-----活4-------|------冲4_A----|-----冲4------|-----活3----|--眠3---|--活2--|眠2--|活1-|---------长连----------|
-  vector<int> black_weight = { 0,1000000,-10000000,
-                               50000,-110000,  // 活4
-                               500, -110000,  // 冲4_A
-                               400, -100000,  // 冲4
-                               400, -8000,  // 活3
-                               20, -50,  // 眠3
-                               20, -50,  // 活2
-                               1, -3,  // 眠2
-                               1,-3, // 活1
-                               1500000 -4000000 };  // AI为黑子时对棋型的估值
-  vector<int> white_weight = { 0,10000000,-1000000,
+  vector<int> black_weight = {  0,9000000,-10000000,
+                                50000,-110000,  // 活4
+                                2600, -110000,  // 冲4_A
+                                2500, -100000,  // 冲4
+                                2500, -8000,  // 活3
+                                20, -50,  // 眠3
+                                20, -50,  // 活2
+                                1, -3,  // 眠2
+                                1,-3, // 活1
+                                9000000,-10000000 };  // AI为黑子时对棋型的估值
+  vector<int> white_weight = { 0,10000000,-9000000,
                                110000,-50000,
-                               110000, -500,
-                               100000, -400,
-                               8000, -400,
+                               110000, -2600,
+                               100000, -2500,
+                               8000, -2500,
                                50, -20,
                                50, -20,
                                3, -1,
                                3,-1,
-                               1000000, -10000000};  // AI为白子时对棋型的估值
+                               10000000,-9000000};  // AI为白子时对棋型的估值
   vector<int> weight;
   if (color_) {  // 黑方为AI
       weight = std::move(black_weight);
