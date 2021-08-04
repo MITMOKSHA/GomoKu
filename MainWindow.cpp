@@ -36,7 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);  // 提示下棋方
   // 对容器进行初始化
 
-  setWindowTitle("Moksha");
+  setWindowTitle("五子棋");
   setFixedSize(900, 900);  // 设置窗口固定大小
   grid_x_ = height() / 20;
   grid_y_ = width() / 20;
@@ -52,11 +52,11 @@ MainWindow::MainWindow(QWidget *parent)
   black_timer_ = new QTimer(this);                                                                    // 创建定时器
   white_timer_ = new QTimer(this);
   connect(black_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      black_show_time_ = black_show_time_.addMSecs(-400);
+      black_show_time_ = black_show_time_.addMSecs(-450);
       ui->label_black_time->setText(black_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
   });
   connect(white_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      white_show_time_ = white_show_time_.addMSecs(-400);
+      white_show_time_ = white_show_time_.addMSecs(-450);
       ui->label_white_time->setText(white_show_time_.toString("mm:ss"));       // 不断更新时钟当前的时间
   });
   // 设置菜单栏及其选项
@@ -313,6 +313,7 @@ void MainWindow::endPointPC()
           }
         // 白子帮黑子执行，打点结束由AI进行选择
         game_->chess_board_[bestPoint.first][bestPoint.second] = 1;
+        game_->trace_.push_back(make_pair(bestPoint.first, bestPoint.second));
         game_->player_flag_ = !game_->player_flag_;  // 交换执行权
         game_->number_[bestPoint.first][bestPoint.second] = ++game_->num_;
         record_.clear();
@@ -819,7 +820,7 @@ void MainWindow::chessOneByPerson()
             for (auto i : ai_record_) {
                 int row = i.first;
                 int col = i.second;
-                if (row == game_->chess_x_ && col == game_->chess_y_) {  // 选择下的棋就不必回溯
+                if (row == game_->chess_x_ && col == game_->chess_y_) {  // 选择下的棋就不必回溯且加入trace数组中
                     continue;
                   }
                 game_->chess_board_[row][col] = 0;  // 回溯
