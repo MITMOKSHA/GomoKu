@@ -1725,7 +1725,7 @@ int Game::thread_calculateScore(int threadId)
             // 棋型辨识数组
             vector<vector<int>> continue_element(6, vector<int>(3, 0));  // continue_element[出现连续顺序][棋的类型值] =该类型的个数
             for (int i = 0; i < 6; ++i)
-            slide[i] = thread_chess_board_[threadId][row + i][col];
+                slide[i] = thread_chess_board_[threadId][row + i][col];
             int index = 0;  // 记录每组连续的元素
             // 从左到右统计滑动窗口中的连续数目
             for (int curr = 0; curr < (int)slide.size(); ++curr) {

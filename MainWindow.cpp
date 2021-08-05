@@ -52,11 +52,19 @@ MainWindow::MainWindow(QWidget *parent)
   black_timer_ = new QTimer(this);                                                                    // 创建定时器
   white_timer_ = new QTimer(this);
   connect(black_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      black_show_time_ = black_show_time_.addMSecs(-450);
+      if (black_show_time_.minute() == 0 && black_show_time_.second() == 0) {
+           return;
+      } else {
+            black_show_time_ = black_show_time_.addMSecs(-450);
+      }
       ui->label_black_time->setText(black_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
   });
   connect(white_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      white_show_time_ = white_show_time_.addMSecs(-450);
+      if (white_show_time_.minute() == 0 && white_show_time_.second() == 0) {
+           return;
+      } else {
+            white_show_time_ = white_show_time_.addMSecs(-450);
+       }
       ui->label_white_time->setText(white_show_time_.toString("mm:ss"));       // 不断更新时钟当前的时间
   });
   // 设置菜单栏及其选项
