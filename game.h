@@ -66,7 +66,7 @@ class Game
 //  vector<int> stat_;                             // 统计必杀棋型数
   int chess_x_ = -1;                             // 实际落子之后的坐标
   int chess_y_ = -1;
-  int depth_ = 4;                                 // 搜索树深度
+  int depth_ = 6;                                 // 搜索树深度
   int kill_depth_ = 8;
   int pointNum = 0;                           // 打点数
   QString prompt_text_;                 // 执行方的提示文本

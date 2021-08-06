@@ -52,19 +52,11 @@ MainWindow::MainWindow(QWidget *parent)
   black_timer_ = new QTimer(this);                                                                    // 创建定时器
   white_timer_ = new QTimer(this);
   connect(black_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      if (black_show_time_.minute() == 0 && black_show_time_.second() == 0) {
-           return;
-      } else {
-            black_show_time_ = black_show_time_.addMSecs(-450);
-      }
+      black_show_time_ = black_show_time_.addMSecs(-400);
       ui->label_black_time->setText(black_show_time_.toString("mm:ss"));        // 不断更新时钟当前的时间
   });
   connect(white_timer_, &QTimer::timeout, this, [&]() {                                     //  超出1s, 则执行该函数改变时钟的时间
-      if (white_show_time_.minute() == 0 && white_show_time_.second() == 0) {
-           return;
-      } else {
-            white_show_time_ = white_show_time_.addMSecs(-450);
-       }
+      white_show_time_ = white_show_time_.addMSecs(-450);
       ui->label_white_time->setText(white_show_time_.toString("mm:ss"));       // 不断更新时钟当前的时间
   });
   // 设置菜单栏及其选项
@@ -557,7 +549,7 @@ void MainWindow::generateChessManual()
             // 打印样例: [2017.07.29 14:00 重庆]
             str += "[";
             str += QDateTime::currentDateTime().toString("yyyy.MM.dd hh:mm");  // 获取当前时间(按时间格式输出)
-            str += " 重庆][2021 CCGC];";
+            str += " 线上][2021 CCGC];";
             // 打印样例: B(J,10)MARK[1];W(L,10);B(J,11);W(I,12);B(H,10);W(H,8);B(K,8)}
             // 使用哈希表来映射坐标点对应棋盘谱中的位置
             unordered_map<int, QString> row_assemble{{0, "A"}, {1, "B"}, {2, "C"}, {3, "D"}, {4, "E"}, {5, "F"}, {6, "G"}, {7, "H"}, {8, "I"}, {9, "J"}, {10, "K"}, {11, "L"}, {12, "M"}, {13, "N"}, {14, "O"}};   // 行坐标对应集合
