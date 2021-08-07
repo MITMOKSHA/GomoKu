@@ -412,7 +412,7 @@ bool Game::judgeProhibitThread(int row, int col, int threadIndex)
         int rush_four_count = state[0][5] + state[1][5] + state[2][5] + state[3][5] + state[0][7] + state[1][7] + state[2][7] + state[3][7];        // 统计当前走子后冲4的个数
         int long_count = state[0][19] + state[1][19] + state[2][19] + state[3][19];                                                                                                           // 统计当前走子后长连的个数
         // 注意:黑方五连和禁手同时形成判黑方胜(即五连时禁手失效), TODO即(需要完善长连+五连的情况, 这种情况罕见, 所以暂不考虑)
-        if (((live_three_count > 2 || rush_four_count >= 4 || (live_three_count >= 2 && rush_four_count >= 2)) && five == 0) || (long_count >= 1 && five <= 2)) {
+        if (((live_three_count > 2 || rush_four_count >= 4) && five == 0) || (long_count >= 1 && five <= 2)) {
             return true;        // 出现禁手返回真值(禁手生效)
         }
         return false;         // 默认为不出现禁手
@@ -581,7 +581,7 @@ bool Game::judgeProhibit(int row, int col)     // 对穿入的点进行滑动操
         int rush_four_count = state[0][5] + state[1][5] + state[2][5] + state[3][5] + state[0][7] + state[1][7] + state[2][7] + state[3][7];        // 统计当前走子后冲4的个数
         int long_count = state[0][19] + state[1][19] + state[2][19] + state[3][19];                                                                                                           // 统计当前走子后长连的个数
         // 注意:黑方五连和禁手同时形成判黑方胜(即五连时禁手失效), TODO即(需要完善长连+五连的情况, 这种情况罕见, 所以暂不考虑)
-        if (((live_three_count > 2 || rush_four_count >= 4 || (live_three_count >= 2 && rush_four_count >= 2)) && five == 0) || (long_count >= 1 && five <= 2)) {
+        if (((live_three_count > 2 || rush_four_count >= 4) && five == 0) || (long_count >= 1 && five <= 2)) {
             return true;        // 出现禁手返回真值(禁手生效)
         }
         return false;         // 默认为不出现禁手

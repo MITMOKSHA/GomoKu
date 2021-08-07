@@ -504,7 +504,7 @@ void MainWindow::generateChessManual()
         if (isok)
         {
             // 打印样例: {[C5][先手参赛队 B][后手参赛队 W]
-            QString str = "{[C5][";
+            QString str = "{[F3][";
             if (initial_name_ == "计算机") {           // 若为AI先手
                 str += "五子棋";          // 本方本次比赛的队伍名
                 if (game_->color_) {    // 若AI为黑子
