@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>res/image/image.qrc</file>
+        <file>res/image/background.png</file>
+        <file>res/image/game.png</file>
+        <file>res/image/chess_manual.png</file>
+        <file>res/image/pvb_game.png</file>
+        <file>res/image/repentance.png</file>
+        <file>res/image/save_chessgame.png</file>
+        <file>res/image/pass.png</file>
+        <file>chess.ico</file>
+    </qresource>
+</RCC>
