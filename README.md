@@ -18,7 +18,7 @@
     8. 禁手
     9. Pass
 4. 环境配置
-    1. Qt 5.15.1
+    1. Qt 5.15.1 MinGW 64-bit
     2. IDE：Qt Creator
 
 ## 二、玩法说明
